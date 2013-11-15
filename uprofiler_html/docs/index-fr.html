@@ -39,7 +39,7 @@ les appels au niveau des fonctions et mesure <a href="#inclusive">inclusivement<
 <a href="#exclusive">exclusivement</a> des métriques telles que le temps écoulé
 la charge CPU ou l’usage de la mémoire. Un profil de fonction peut être divisé selon ses appelants, ou ses appelés. Le composant qui extrait les données brutes est écrit en C
 et implémenté telle une extension PHP Zend.
-<code><b>xhprof</b></code>. XHProf a une interface utilisateur simple en HTML, (écrite en PHP). 
+<code><b>uprofiler</b></code>. XHProf a une interface utilisateur simple en HTML, (écrite en PHP). 
 L’interface permet de visualiser et de partager facilement le résultat des profilages dans un navigateur.
 Un rendu sous forme de graphique est également disponible.
 
@@ -227,9 +227,9 @@ combien d’appels dont dus à a() ou b().
 OS</b>. [Cela a été testé sur Mac OS 10.5.]
 
 <p><b>Note:</b> XHProf utilise les insctructions RDTSC (time stamp counter)
-pour implémenter un compteur de temps vraiment bas niveau. C’est pourquoi actuellement <code>xhprof</code> fonctionne uniquement sur une architecture <b>x86</b>.
+pour implémenter un compteur de temps vraiment bas niveau. C’est pourquoi actuellement <code>uprofiler</code> fonctionne uniquement sur une architecture <b>x86</b>.
 Aussi tant que les valeurs de RDTSC ne pourront pas être synchronisées entre plusieurs CPUs,
-<code>xhprof</code> n’en utilisera qu’un seul lors du profilage.
+<code>uprofiler</code> n’en utilisera qu’un seul lors du profilage.
 
 <p>Le timer XHProf bzasé sur RDTSC ne fonctionen pas parfaitement si la techno
 <b>SpeedStep</b> est activée. Cette technologie est disponible sur certains processeurs Intel.
@@ -241,7 +241,7 @@ Aussi tant que les valeurs de RDTSC ne pourront pas être synchronisées entre p
 
 
 <pre>
-% cd &lt;repertoire_source_xhprof&gt;/extension/
+% cd &lt;repertoire_source_uprofiler&gt;/extension/
 % phpize
 % ./configure --with-php-config=&lt;chemin vers php-config&gt;
 % make
@@ -254,13 +254,13 @@ Aussi tant que les valeurs de RDTSC ne pourront pas être synchronisées entre p
 php.ini file afin qu’il charge automatiquement votre extension en ajoutant le code suivant :
 
 <pre>
-[xhprof]
-extension=xhprof.so
+[uprofiler]
+extension=uprofiler.so
 ;
 ; répertoire utilisé par l’implémentation par défaut de l’interface iXHProfRuns
 ; (nommée, XHProfRuns_Default class) pour stocker les runs XHProf.
 ;
-xhprof.output_dir=&lt;repertoire_pour_stocker_les_runs_xhprof&gt;
+uprofiler.output_dir=&lt;repertoire_pour_stocker_les_runs_uprofiler&gt;
 </pre>
 
 
@@ -287,23 +287,23 @@ function foo() {
 }
 
 // début du profileur
-<b>xhprof_enable();</b>
+<b>uprofiler_enable();</b>
 
 // début du programme
 foo();
 
 // attêt du profileur
-<b>$xhprof_data = xhprof_disable();</b>
+<b>$uprofiler_data = uprofiler_disable();</b>
 
 // affichage des données de profilage brutes
-print_r($xhprof_data);
+print_r($uprofiler_data);
 </pre>
 </ul>
 
 <p><b>Lancez ce programme :</b>
 
 <pre>
-% php -dextension=xhprof.so foo.php
+% php -dextension=uprofiler.so foo.php
 </pre>
 
 <p><b>Vous devez avoir un résultat tel que :</b>
@@ -335,7 +335,7 @@ Array
             [wt] => 74
         )
 
-    [main()==>xhprof_disable] => Array
+    [main()==>uprofiler_disable] => Array
         (
             [ct] => 1
             [wt] => 0
@@ -358,11 +358,11 @@ Les temps exclusifs sont calculés pour chaque fonction lors de la phase d’ana
 Vous pouvez aussi profilerle temps CPU et/ou la charge mémoire. Remplacez,
 
 <ul><pre>
-<b>xhprof_enable();</b>
+<b>uprofiler_enable();</b>
 </pre></ul>
 dans le programme précédent avec, par exemple :
 <ul><pre>
-<b>xhprof_enable(XHPROF_FLAGS_CPU + XHPROF_FLAGS_MEMORY)</b>;
+<b>uprofiler_enable(XHPROF_FLAGS_CPU + XHPROF_FLAGS_MEMORY)</b>;
 </pre></ul>
 
 <p><b>Vous aurez en sortie :</b>
@@ -406,7 +406,7 @@ Array
             [pmu] => 0
         )
 
-    [main()==>xhprof_disable] => Array
+    [main()==>uprofiler_disable] => Array
         (
             [ct] => 1
             [wt] => 1
@@ -435,7 +435,7 @@ Vous pouvez utiliser le drapeau <code><b>XHPROF_FLAGS_NO_BUILTINS</b></code> com
 
 <ul><pre>
 // ne pas profiler les fonctions natives
-<b>xhprof_enable(XHPROF_FLAGS_NO_BUILTINS)</b>;
+<b>uprofiler_enable(XHPROF_FLAGS_NO_BUILTINS)</b>;
 </pre></ul>
 
 
@@ -446,21 +446,21 @@ fonctions à ignorer pendant le profilage. Cela vous permet de ne pas prendre en
 des fonctions utilisées pour des appels indirects comme <code>call_user_func</code> et <code>call_user_func_array</code>. 
 Ces fonctions intermédiaires compliquent inutilement la hirarchie des appels et rendent plus ardue l’interprétation des rapports en brouillant les relations parent/enfant.
 
-<p>Pour spécifier cette liste de fonctions à ignorer durant le profilage, il suffit d’utiliser le second paramètre (optionnel) de <code>xhprof_enable</code>.
+<p>Pour spécifier cette liste de fonctions à ignorer durant le profilage, il suffit d’utiliser le second paramètre (optionnel) de <code>uprofiler_enable</code>.
 Par exemple,
 
 <pre>
 <ul><pre>
 <b>
 // temps passé en profilage; ignore les appels de call_user_func* pendant le profilage
-xhprof_enable(0,
+uprofiler_enable(0,
              array('ignored_functions' =>  array('call_user_func',
                                                  'call_user_func_array')));
 </b>
 or,
 <b>
 // tempas pasé en profilage + profilage mémoire; ignore call_user_func* durant le profilage
-xhprof_enable(XHPROF_FLAGS_MEMORY,
+uprofiler_enable(XHPROF_FLAGS_MEMORY,
               array('ignored_functions' =>  array('call_user_func',
                                                   'call_user_func_array')));
 </b>
@@ -476,9 +476,9 @@ xhprof_enable(XHPROF_FLAGS_MEMORY,
 
 <li><b>Structure de la source PHP</b>
 <p>l’interface graphique d’XHProf est implémentée en PHP. Le code est divisé en deux sous-répertoires, 
-<code>xhprof_html/</code> and <code>xhprof_lib/</code>.
+<code>uprofiler_html/</code> and <code>uprofiler_lib/</code>.
 
-<p>Le répertoire <code>xhprof_html</code> contient les 3 pages PHP principales.
+<p>Le répertoire <code>uprofiler_html</code> contient les 3 pages PHP principales.
 
 <ul>
 <li><code>index.php</code>: Pour visualiser un run ou un différentiel entre deux runs.
@@ -486,22 +486,22 @@ xhprof_enable(XHPROF_FLAGS_MEMORY,
 <li><code>typeahead.php</code>: Utilisé implicitement pour les fonctions de gestion de pile sur un rapport XHProf.
 </ul>
 
-<p>Le répertoire <code>xhprof_lib</code> contient le code pour l’analyse et l’affichage. 
+<p>Le répertoire <code>uprofiler_lib</code> contient le code pour l’analyse et l’affichage. 
 (calcul sur les informations de profilage, calcul des différentiels, aggrégation de données, etc.).
 
 <li><p><b>Configuration du server web : </b> Vous devez vous assurer que le répertoire 
-<code>xhprof_html/</code> est accessible depuis le serveur web, et qu’il est configuré pour éxécuter des scripts PHP.
+<code>uprofiler_html/</code> est accessible depuis le serveur web, et qu’il est configuré pour éxécuter des scripts PHP.
 
 <li><p><b>Gérer les runs XHProf</b>
 
 <p>Les clients web ont une certaine souplesse dans la manière de sauvegarder les données brutes fournies par XHProf. 
-XHProf expose une interface utilisateur nommée iXHProfRuns (voir xhprof_lib/utils/xhprof_runs.php) que les clients peuvent implémenter. 
+XHProf expose une interface utilisateur nommée iXHProfRuns (voir uprofiler_lib/utils/uprofiler_runs.php) que les clients peuvent implémenter. 
 Cela permet aux clients de préciser comment afficher les donées des runs.
 
 <p>L’interface utilisateur d’XHProf fournit une implementation par défaut nommée, 
-"XHProfRuns_Default" (aussi dans xhprof_lib/utils/xhprof_runs.php).
+"XHProfRuns_Default" (aussi dans uprofiler_lib/utils/uprofiler_runs.php).
 L’implementation par d"faut stocke les runs dans le répertoire définit par le paramètre INI :  
-<a href="#ini_file"><b>xhprof.output_dir</b></a>.
+<a href="#ini_file"><b>uprofiler.output_dir</b></a>.
 
 <p>Un run XHProf doit être définit de manière unique par un espace de nom et un identifiant de run.
 
@@ -514,44 +514,44 @@ L’implementation par d"faut stocke les runs dans le répertoire définit par l
 
 <pre>
 // début du profilage
-xhprof_enable();
+uprofiler_enable();
 
 // lancement du programme
 ...
 
 // fin du profilage
-$xhprof_data = xhprof_disable();
+$uprofiler_data = uprofiler_disable();
 
 //
 // Sauvegarde du run XHProf
 // en utilisant l’implementation par défaut de iXHProfRuns.
 //
-include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_lib.php";
-include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_runs.php";
+include_once $XHPROF_ROOT . "/uprofiler_lib/utils/uprofiler_lib.php";
+include_once $XHPROF_ROOT . "/uprofiler_lib/utils/uprofiler_runs.php";
 
-$xhprof_runs = new <b>XHProfRuns_Default()</b>;
+$uprofiler_runs = new <b>XHProfRuns_Default()</b>;
 
-// sauvegarde du run avec l’espace de nom "xhprof_foo".
+// sauvegarde du run avec l’espace de nom "uprofiler_foo".
 //
 // **NOTE**:
 // par défault save_run() va automatiquement générer un identifiant de run
 // unique. [Vous pouvez surcharger cette donnée en passant l’identifiant en paramètre optionnel 
 // à la méthode save_run().]
 //
-<b>$run_id = $xhprof_runs->save_run($xhprof_data, "xhprof_foo");</b>
+<b>$run_id = $uprofiler_runs->save_run($uprofiler_data, "uprofiler_foo");</b>
 
 echo "---------------\n".
      "En partant du principe que vous avez parametré l’interface utilisateur http \n".
      "XHProf, vous pouvez visualiser les runs avec l’adresse : \n".
-     "http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?run=$run_id&source=xhprof_foo\n".
+     "http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?run=$run_id&source=uprofiler_foo\n".
      "---------------\n";
 
 </pre>
 
 <p>La suite permet de sauvegarder le run sous forme d’un fichier dans le répertoire spécifié
-par le paramètre ini <code><b>xhprof.output_dir</b></code>. Le nom du fichier doit être de la forme
-<b><code>49bafaa3a3f66.xhprof_foo</code></b>; Les deux parties du nom sont formées par l’identifiant du run 
-("49bafaa3a3f66") et l’espace de nom ("xhprof_foo"). [Si vous souhaitez créer un identifiant de run vous-même 
+par le paramètre ini <code><b>uprofiler.output_dir</b></code>. Le nom du fichier doit être de la forme
+<b><code>49bafaa3a3f66.uprofiler_foo</code></b>; Les deux parties du nom sont formées par l’identifiant du run 
+("49bafaa3a3f66") et l’espace de nom ("uprofiler_foo"). [Si vous souhaitez créer un identifiant de run vous-même 
 (comme une sequence de base de données, ou un timestamp), vous pouvez explicitementpasser l’identifiant 
 du run à la méthode <code>save_run</code>.
 
@@ -563,12 +563,12 @@ etc.), vous aurez besoin d’implémenter une classe qui implémente l’interfa
 iXHProfRuns().
 
 <p> Vous devrez également modifier les 3 pages PHP d’entrée (index.php,
-callgraph.php, typeahead.php) dans le répertoire "xhprof_html/" pour utiliser la 
+callgraph.php, typeahead.php) dans le répertoire "uprofiler_html/" pour utiliser la 
 nouvelle interface au lieu de celle par défaut (<code>XHProfRuns_Default</code>),
 changez cette ligne dans les 3 fichier.
 
 <pre>
-$xhprof_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new XHProfRuns_Default();
 </pre>
 
 <p>Vous aurez aussi besoin d’inclure le fichier qui implémente votre classe dans les fichiers cités.
@@ -581,12 +581,12 @@ $xhprof_runs_impl = new XHProfRuns_Default();
 &lt;namespace&gt; utilisez une url de la forme :
 
 <p><code>
-http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?run=&lt;run_id&gt;&source=&lt;namespace&gt;
+http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?run=&lt;run_id&gt;&source=&lt;namespace&gt;
 </code>
 
 <p>Par example,
 <p><code>
-http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?run=49bafaa3a3f66&source=xhprof_foo
+http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?run=49bafaa3a3f66&source=uprofiler_foo
 </code>
 
 <p><b>b) Voir un rapport différentiel</b>
@@ -595,7 +595,7 @@ http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?run=49bafaa3a3f66&
 &lt;run_id2&gt; et l’espace de nom &lt;namespace&gt; utilisez une url de la forme :
 
 <p><code>
-http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?<b>run1=&lt;run_id1&gt;&run2=&lt;run_id2&gt;</b>&source=&lt;namespace&gt;
+http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?<b>run1=&lt;run_id1&gt;&run2=&lt;run_id2&gt;</b>&source=&lt;namespace&gt;
 </code>
 
 <p><b>c) Voir un rapport d’aggrégation</b>
@@ -606,7 +606,7 @@ http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?<b>run1=&lt;run_id
 "benchmark".  Pour voir l’aggrégation de ces trois runs :
 
 <ul><p><code>
-http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?<b>run=1,2,3</b>&source=benchmark
+http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?<b>run=1,2,3</b>&source=benchmark
 </code></p></ul>
 
 <p><b>Aggrégations pondérées</b>: En supposant que les trois runs
@@ -615,7 +615,7 @@ qui occupent chacun respectivement 20%, 30% et 50%. Pour voir un rapport d’agg
 pondéré par les poids des runs :
 
 <ul><p><code>
-http://&lt;adresse-interface-utilisateur-xhprof&gt;/index.php?<b>run=1,2,3&wts=20,30,50</b>&source=benchmark
+http://&lt;adresse-interface-utilisateur-uprofiler&gt;/index.php?<b>run=1,2,3&wts=20,30,50</b>&source=benchmark
 </code></p></ul>
 
 </ol>
@@ -635,7 +635,7 @@ En conséquence, les valeurs rapportées en utilisant le mode XHPROF_FLAGS_CPU o
 
 <p><ul><pre><b>
   // profilage du temps passé (par défault) + profilage mémoire
-  xhprof_enable(XHPROF_FLAGS_MEMORY);
+  uprofiler_enable(XHPROF_FLAGS_MEMORY);
 </b></pre>
 </ul></p>
 
@@ -647,26 +647,26 @@ de votre environnement de production.
 
 <p><ul><pre><code>
  if (mt_rand(1, 10000) == 1) {
-   xhprof_enable(XHPROF_FLAGS_MEMORY);
-   $xhprof_on = true;
+   uprofiler_enable(XHPROF_FLAGS_MEMORY);
+   $uprofiler_on = true;
  }
 </code></pre></ul></p>
 
 <p>À la fin de la requête (ou dans une fonction de finalisation de la requête), vous pouvez faire quelque chose comme :
 
 <p><ul><pre><code>
- if ($xhprof_on) {
+ if ($uprofiler_on) {
    // fin du profilage
-   $xhprof_data = xhprof_disable();
+   $uprofiler_data = uprofiler_disable();
 
-   // sauvegarde $xhprof_data quelquepart (base de données centralisée …)
+   // sauvegarde $uprofiler_data quelquepart (base de données centralisée …)
    ...
  }
 </code></pre></ul></p>
 
 <p> Vous pouvez alors récupérer et aggréger ces profilages par horaire 
 (par exemple 5 minutes, par jour, par jour …), par page ou type de requête, ou n’importe quel 
-paramètre utilisé par <a href="#xhprof_aggregate_runs"><code><b>xhprof_aggregate_runs()</b></code></a>.
+paramètre utilisé par <a href="#uprofiler_aggregate_runs"><code><b>uprofiler_aggregate_runs()</b></code></a>.
 
 </ul>
 
@@ -678,13 +678,13 @@ Ce mode peut être très utile pour avoir un impact le plus négligeable possibl
 Le mode sample peut être utile si vous désirez un moyen avec peu de dépassement de faire de la surveillance de performances et des diagnostics.
 
 <p>Les très pertinentes fonctions utilisées par l’extension pour utiliser le mode 
-d’échantillonage sont <code><b>xhprof_sample_enable()</b></code> et <code><b>xhprof_sample_disable()</b></code>.
+d’échantillonage sont <code><b>uprofiler_sample_enable()</b></code> et <code><b>uprofiler_sample_disable()</b></code>.
 
 <p>[<b>TBD</b>: Documentation plus détaillée pour le mode d’échantillonage.]
 
 <li><a name="misc"><h2>Fonctionnalités supplémentaires</h2></a></li>
 
-<p>Le fichier <code><b>XHProf_lib/utils/xhprof_lib.php</b></code> contient
+<p>Le fichier <code><b>XHProf_lib/utils/uprofiler_lib.php</b></code> contient
 des librairies de fonctions additionellesqui peuvent être utilisées pour manipuler
 et aggréger les runs XHProf.
 
@@ -692,16 +692,16 @@ et aggréger les runs XHProf.
 
 <ul>
 
-<a name="xhprof_aggregate_runs"></a>
-<p><li><code><b>xhprof_aggregate_runs()</b></code>:
+<a name="uprofiler_aggregate_runs"></a>
+<p><li><code><b>uprofiler_aggregate_runs()</b></code>:
 peut être utilisé pour aggréger de multiples runs XHProf runs dans un seul run. 
 Cela peut être très utile pour fabriquer un outil de monitoring utilisant XHProf et à l’échelle voulue.
 [Par exemple, vous pouvez mixer des runs XHProf issus périodiquement 
 d’échantillonage de la production pour générer des rapport journalier.]
 
-<p><li><code><b>xhprof_prune_run()</b></code>: Aggréger une grande quantité de runs
+<p><li><code><b>uprofiler_prune_run()</b></code>: Aggréger une grande quantité de runs
 (particulièrement si ils correspondent à des zones différentes du programme) peut créer un rendu 
-graphique beaucoup trop gros. Vous pouvez donc utiliser la fonction <code>xhprof_prune_run</code> 
+graphique beaucoup trop gros. Vous pouvez donc utiliser la fonction <code>uprofiler_prune_run</code> 
 élaguer les données à afficher. En supprimant des branches qui compte pour une partie négligeable du temps passé.
 
 </ul>
@@ -716,7 +716,7 @@ graphique beaucoup trop gros. Vous pouvez donc utiliser la fonction <code>xhprof
 <li><b>JQuery Javascript</b>: Pour les bulles d’aides et les noms de fonctions de pile, 
 nous utilisons la librairie Javascript, JQuery. JQuery est disponible sous les licences MIT et GPL
 (http://docs.jquery.com/Licensing). Ce code JQuery, utilisé par XHProf, se trouve dans le 
-sous répertoire <code>xhprof_html/jquery</code>.
+sous répertoire <code>uprofiler_html/jquery</code>.
 
 <li><b>dot (utilitaire de génération d’image):</b> Le fonctionnalité de rendu graphique
 ([View Callgraph]) est présente grâce à la présence de Graphviz "dot" dans votre path. 

@@ -56,9 +56,9 @@ function foo($x) {
 
 // 1: Sanity test a sampling profile run
 echo "Part 1: Sampling Profile\n";
-xhprof_sample_enable();
+uprofiler_sample_enable();
 foo(5000);
-$output = xhprof_sample_disable();
+$output = uprofiler_sample_disable();
 
 echo "Part 1: output\n";
 echo "In general, sampling output depends upon execution speed.\n";

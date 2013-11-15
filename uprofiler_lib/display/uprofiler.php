@@ -33,9 +33,9 @@ if (!isset($GLOBALS['XHPROF_LIB_ROOT'])) {
   $GLOBALS['XHPROF_LIB_ROOT'] = realpath(dirname(__FILE__) . '/..');
 }
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/xhprof_lib.php';
+require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_lib.php';
 require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/callgraph_utils.php';
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/xhprof_runs.php';
+require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_runs.php';
 
 
 /**
@@ -49,20 +49,20 @@ $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
  * Generate references to required stylesheets & javascript.
  *
  * If the calling script (such as index.php) resides in
- * a different location that than 'xhprof_html' directory the
- * caller must provide the URL path to 'xhprof_html' directory
+ * a different location that than 'uprofiler_html' directory the
+ * caller must provide the URL path to 'uprofiler_html' directory
  * so that the correct location of the style sheets/javascript
  * can be specified in the generated HTML.
  *
  */
-function xhprof_include_js_css($ui_dir_url_path = null) {
+function uprofiler_include_js_css($ui_dir_url_path = null) {
 
   if (empty($ui_dir_url_path)) {
     $ui_dir_url_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
   }
 
   // style sheets
-  echo "<link href='$ui_dir_url_path/css/xhprof.css' rel='stylesheet' ".
+  echo "<link href='$ui_dir_url_path/css/uprofiler.css' rel='stylesheet' ".
     " type='text/css' />";
   echo "<link href='$ui_dir_url_path/jquery/jquery.tooltip.css' ".
     " rel='stylesheet' type='text/css' />";
@@ -76,7 +76,7 @@ function xhprof_include_js_css($ui_dir_url_path = null) {
        "</script>";
   echo "<script src='$ui_dir_url_path/jquery/jquery.autocomplete.js'>"
        ."</script>";
-  echo "<script src='$ui_dir_url_path/js/xhprof_report.js'></script>";
+  echo "<script src='$ui_dir_url_path/js/uprofiler_report.js'></script>";
 }
 
 
@@ -96,7 +96,7 @@ function xhprof_include_js_css($ui_dir_url_path = null) {
  *   4000.0001 ==> 4,000
  *
  */
-function xhprof_count_format($num) {
+function uprofiler_count_format($num) {
   $num = round($num, 3);
   if (round($num) == $num) {
     return number_format($num);
@@ -105,7 +105,7 @@ function xhprof_count_format($num) {
   }
 }
 
-function xhprof_percent_format($s, $precision = 1) {
+function uprofiler_percent_format($s, $precision = 1) {
   return sprintf('%.'.$precision.'f%%', 100 * $s);
 }
 
@@ -113,11 +113,11 @@ function xhprof_percent_format($s, $precision = 1) {
  * Implodes the text for a bunch of actions (such as links, forms,
  * into a HTML list and returns the text.
  */
-function xhprof_render_actions($actions) {
+function uprofiler_render_actions($actions) {
   $out = array();
 
   if (count($actions)) {
-    $out[] = '<ul class="xhprof_actions">';
+    $out[] = '<ul class="uprofiler_actions">';
     foreach ($actions as $action) {
       $out[] = '<li>'.$action.'</li>';
     }
@@ -144,7 +144,7 @@ function xhprof_render_actions($actions) {
  * @param raw-str  $dir
  * @param raw-str  $rel
  */
-function xhprof_render_link($content, $href, $class='', $id='', $title='',
+function uprofiler_render_link($content, $href, $class='', $id='', $title='',
                             $target='',
                             $onclick='', $style='', $access='', $onmouseover='',
                             $onmouseout='', $onmousedown='') {
@@ -275,43 +275,43 @@ $descriptions = array(
 // Formatting Callback Functions...
 $format_cbk = array(
                       "fn" => "",
-                      "ct" => "xhprof_count_format",
-                      "Calls%" => "xhprof_percent_format",
+                      "ct" => "uprofiler_count_format",
+                      "Calls%" => "uprofiler_percent_format",
 
                       "wt" => "number_format",
-                      "IWall%" => "xhprof_percent_format",
+                      "IWall%" => "uprofiler_percent_format",
                       "excl_wt" => "number_format",
-                      "EWall%" => "xhprof_percent_format",
+                      "EWall%" => "uprofiler_percent_format",
 
                       "ut" => "number_format",
-                      "IUser%" => "xhprof_percent_format",
+                      "IUser%" => "uprofiler_percent_format",
                       "excl_ut" => "number_format",
-                      "EUser%" => "xhprof_percent_format",
+                      "EUser%" => "uprofiler_percent_format",
 
                       "st" => "number_format",
-                      "ISys%" => "xhprof_percent_format",
+                      "ISys%" => "uprofiler_percent_format",
                       "excl_st" => "number_format",
-                      "ESys%" => "xhprof_percent_format",
+                      "ESys%" => "uprofiler_percent_format",
 
                       "cpu" => "number_format",
-                      "ICpu%" => "xhprof_percent_format",
+                      "ICpu%" => "uprofiler_percent_format",
                       "excl_cpu" => "number_format",
-                      "ECpu%" => "xhprof_percent_format",
+                      "ECpu%" => "uprofiler_percent_format",
 
                       "mu" => "number_format",
-                      "IMUse%" => "xhprof_percent_format",
+                      "IMUse%" => "uprofiler_percent_format",
                       "excl_mu" => "number_format",
-                      "EMUse%" => "xhprof_percent_format",
+                      "EMUse%" => "uprofiler_percent_format",
 
                       "pmu" => "number_format",
-                      "IPMUse%" => "xhprof_percent_format",
+                      "IPMUse%" => "uprofiler_percent_format",
                       "excl_pmu" => "number_format",
-                      "EPMUse%" => "xhprof_percent_format",
+                      "EPMUse%" => "uprofiler_percent_format",
 
                       "samples" => "number_format",
-                      "ISamples%" => "xhprof_percent_format",
+                      "ISamples%" => "uprofiler_percent_format",
                       "excl_samples" => "number_format",
-                      "ESamples%" => "xhprof_percent_format",
+                      "ESamples%" => "uprofiler_percent_format",
                       );
 
 
@@ -460,25 +460,25 @@ function profiler_report ($url_params,
   // That way compute_flat_info()/compute_diff() etc. do not have
   // to needlessly work hard on churning irrelevant data.
   if (!empty($rep_symbol)) {
-    $run1_data = xhprof_trim_run($run1_data, array($rep_symbol));
+    $run1_data = uprofiler_trim_run($run1_data, array($rep_symbol));
     if ($diff_mode) {
-      $run2_data = xhprof_trim_run($run2_data, array($rep_symbol));
+      $run2_data = uprofiler_trim_run($run2_data, array($rep_symbol));
     }
   }
 
   if ($diff_mode) {
-    $run_delta = xhprof_compute_diff($run1_data, $run2_data);
-    $symbol_tab  = xhprof_compute_flat_info($run_delta, $totals);
-    $symbol_tab1 = xhprof_compute_flat_info($run1_data, $totals_1);
-    $symbol_tab2 = xhprof_compute_flat_info($run2_data, $totals_2);
+    $run_delta = uprofiler_compute_diff($run1_data, $run2_data);
+    $symbol_tab  = uprofiler_compute_flat_info($run_delta, $totals);
+    $symbol_tab1 = uprofiler_compute_flat_info($run1_data, $totals_1);
+    $symbol_tab2 = uprofiler_compute_flat_info($run2_data, $totals_2);
   } else {
-    $symbol_tab = xhprof_compute_flat_info($run1_data, $totals);
+    $symbol_tab = uprofiler_compute_flat_info($run1_data, $totals);
   }
 
   $run1_txt = sprintf("<b>Run #%s:</b> %s",
                       $run1, $run1_desc);
 
-  $base_url_params = xhprof_array_unset(xhprof_array_unset($url_params,
+  $base_url_params = uprofiler_array_unset(uprofiler_array_unset($url_params,
                                                            'symbol'),
                                         'all');
 
@@ -486,19 +486,19 @@ function profiler_report ($url_params,
 
   if ($diff_mode) {
     $diff_text = "Diff";
-    $base_url_params = xhprof_array_unset($base_url_params, 'run1');
-    $base_url_params = xhprof_array_unset($base_url_params, 'run2');
-    $run1_link = xhprof_render_link('View Run #' . $run1,
+    $base_url_params = uprofiler_array_unset($base_url_params, 'run1');
+    $base_url_params = uprofiler_array_unset($base_url_params, 'run2');
+    $run1_link = uprofiler_render_link('View Run #' . $run1,
                            "$base_path/?" .
-                           http_build_query(xhprof_array_set($base_url_params,
+                           http_build_query(uprofiler_array_set($base_url_params,
                                                       'run',
                                                       $run1)));
     $run2_txt = sprintf("<b>Run #%s:</b> %s",
                         $run2, $run2_desc);
 
-    $run2_link = xhprof_render_link('View Run #' . $run2,
+    $run2_link = uprofiler_render_link('View Run #' . $run2,
                                     "$base_path/?" .
-                        http_build_query(xhprof_array_set($base_url_params,
+                        http_build_query(uprofiler_array_set($base_url_params,
                                                           'run',
                                                           $run2)));
   } else {
@@ -507,7 +507,7 @@ function profiler_report ($url_params,
 
   // set up the action links for operations that can be done on this report
   $links = array();
-  $links [] =  xhprof_render_link("View Top Level $diff_text Report",
+  $links [] =  uprofiler_render_link("View Top Level $diff_text Report",
                                  $top_link_query_string);
 
   if ($diff_mode) {
@@ -518,7 +518,7 @@ function profiler_report ($url_params,
     // view the different runs or invert the current diff
     $links [] = $run1_link;
     $links [] = $run2_link;
-    $links [] = xhprof_render_link('Invert ' . $diff_text . ' Report',
+    $links [] = uprofiler_render_link('Invert ' . $diff_text . ' Report',
                            "$base_path/?".
                            http_build_query($inverted_params));
   }
@@ -527,7 +527,7 @@ function profiler_report ($url_params,
   $links [] = '<input class="function_typeahead" ' .
               ' type="input" size="40" maxlength="100" />';
 
-  echo xhprof_render_actions($links);
+  echo uprofiler_render_actions($links);
 
 
   echo
@@ -641,7 +641,7 @@ function print_td_pct($numer, $denom, $bold=false, $attributes=null) {
   if ($denom == 0) {
     $pct = "N/A%";
   } else {
-    $pct = xhprof_percent_format($numer / abs($denom));
+    $pct = uprofiler_percent_format($numer / abs($denom));
   }
 
   print("<td $attributes $class>$pct</td>\n");
@@ -673,11 +673,11 @@ function print_function_info($url_params, $info, $sort, $run1, $run2) {
   }
 
   $href = "$base_path/?" .
-           http_build_query(xhprof_array_set($url_params,
+           http_build_query(uprofiler_array_set($url_params,
                                              'symbol', $info["fn"]));
 
   print('<td>');
-  print(xhprof_render_link($info["fn"], $href));
+  print(uprofiler_render_link($info["fn"], $href));
   print_source_link($info);
   print("</td>\n");
 
@@ -724,9 +724,9 @@ function print_flat_data($url_params, $title, $flat_data, $sort, $run1, $run2, $
     $limit = $size;
     $display_link = "";
   } else {
-    $display_link = xhprof_render_link(" [ <b class=bubble>display all </b>]",
+    $display_link = uprofiler_render_link(" [ <b class=bubble>display all </b>]",
                                        "$base_path/?" .
-                                       http_build_query(xhprof_array_set($url_params,
+                                       http_build_query(uprofiler_array_set($url_params,
                                                                          'all', 1)));
   }
 
@@ -740,8 +740,8 @@ function print_flat_data($url_params, $title, $flat_data, $sort, $run1, $run2, $
     $desc = stat_description($stat);
     if (array_key_exists($stat, $sortable_columns)) {
       $href = "$base_path/?"
-              . http_build_query(xhprof_array_set($url_params, 'sort', $stat));
-      $header = xhprof_render_link($desc, $href);
+              . http_build_query(uprofiler_array_set($url_params, 'sort', $stat));
+      $header = uprofiler_render_link($desc, $href);
     } else {
       $header = $desc;
     }
@@ -792,18 +792,18 @@ function full_report($url_params, $symbol_tab, $sort, $run1, $run2) {
   global $display_calls;
   global $base_path;
 
-  $possible_metrics = xhprof_get_possible_metrics();
+  $possible_metrics = uprofiler_get_possible_metrics();
 
   if ($diff_mode) {
 
-    $base_url_params = xhprof_array_unset(xhprof_array_unset($url_params,
+    $base_url_params = uprofiler_array_unset(uprofiler_array_unset($url_params,
                                                              'run1'),
                                           'run2');
     $href1 = "$base_path/?" .
-      http_build_query(xhprof_array_set($base_url_params,
+      http_build_query(uprofiler_array_set($base_url_params,
                                         'run', $run1));
     $href2 = "$base_path/?" .
-      http_build_query(xhprof_array_set($base_url_params,
+      http_build_query(uprofiler_array_set($base_url_params,
                                         'run', $run2));
 
     print("<h3><center>Overall Diff Summary</center></h3>");
@@ -811,8 +811,8 @@ function full_report($url_params, $symbol_tab, $sort, $run1, $run2) {
           .'rules=rows bordercolor="#bdc7d8" align=center>' . "\n");
     print('<tr bgcolor="#bdc7d8" align=right>');
     print("<th></th>");
-    print("<th $vwbar>" . xhprof_render_link("Run #$run1", $href1) . "</th>");
-    print("<th $vwbar>" . xhprof_render_link("Run #$run2", $href2) . "</th>");
+    print("<th $vwbar>" . uprofiler_render_link("Run #$run1", $href1) . "</th>");
+    print("<th $vwbar>" . uprofiler_render_link("Run #$run2", $href2) . "</th>");
     print("<th $vwbar>Diff</th>");
     print("<th $vwbar>Diff%</th>");
     print('</tr>');
@@ -874,7 +874,7 @@ function full_report($url_params, $symbol_tab, $sort, $run1, $run2) {
   }
 
   print("<center><br><h3>" .
-        xhprof_render_link($callgraph_report_title,
+        uprofiler_render_link($callgraph_report_title,
                     "$base_path/callgraph.php" . "?" . http_build_query($url_params))
         . "</h3></center>");
 
@@ -981,7 +981,7 @@ function print_pc_array($url_params, $results, $base_ct, $base_info, $parent,
   $odd_even = 0;
   foreach ($results as $info) {
     $href = "$base_path/?" .
-      http_build_query(xhprof_array_set($url_params,
+      http_build_query(uprofiler_array_set($url_params,
                                         'symbol', $info["fn"]));
 
     $odd_even = 1 - $odd_even;
@@ -993,7 +993,7 @@ function print_pc_array($url_params, $results, $base_ct, $base_info, $parent,
       print('<tr bgcolor="#e5e5e5">');
     }
 
-    print("<td>" . xhprof_render_link($info["fn"], $href));
+    print("<td>" . uprofiler_render_link($info["fn"], $href));
     print_source_link($info);
     print("</td>");
     pc_info($info, $base_ct, $base_info, $parent);
@@ -1004,7 +1004,7 @@ function print_pc_array($url_params, $results, $base_ct, $base_info, $parent,
 function print_source_link($info) {
   if (strncmp($info['fn'], 'run_init', 8) && $info['fn'] !== 'main()') {
 	if (defined('XHPROF_SYMBOL_LOOKUP_URL')) {
-      $link = xhprof_render_link(
+      $link = uprofiler_render_link(
         'source',
         XHPROF_SYMBOL_LOOKUP_URL . '?symbol='.rawurlencode($info["fn"]));
       print(' ('.$link.')');
@@ -1052,7 +1052,7 @@ function symbol_report($url_params,
   global $display_calls;
   global $base_path;
 
-  $possible_metrics = xhprof_get_possible_metrics();
+  $possible_metrics = uprofiler_get_possible_metrics();
 
   if ($diff_mode) {
     $diff_text = "<b>Diff</b>";
@@ -1064,13 +1064,13 @@ function symbol_report($url_params,
 
   if ($diff_mode) {
 
-    $base_url_params = xhprof_array_unset(xhprof_array_unset($url_params,
+    $base_url_params = uprofiler_array_unset(uprofiler_array_unset($url_params,
                                                              'run1'),
                                           'run2');
     $href1 = "$base_path?"
-      . http_build_query(xhprof_array_set($base_url_params, 'run', $run1));
+      . http_build_query(uprofiler_array_set($base_url_params, 'run', $run1));
     $href2 = "$base_path?"
-      . http_build_query(xhprof_array_set($base_url_params, 'run', $run2));
+      . http_build_query(uprofiler_array_set($base_url_params, 'run', $run2));
 
     print("<h3 align=center>$regr_impr summary for $rep_symbol<br><br></h3>");
     print('<table border=1 cellpadding=2 cellspacing=1 width="30%" '
@@ -1143,7 +1143,7 @@ function symbol_report($url_params,
   print("Parent/Child $regr_impr report for <b>$rep_symbol</b>");
 
   $callgraph_href = "$base_path/callgraph.php?"
-    . http_build_query(xhprof_array_set($url_params, 'func', $rep_symbol));
+    . http_build_query(uprofiler_array_set($url_params, 'func', $rep_symbol));
 
   print(" <a href='$callgraph_href'>[View Callgraph $diff_text]</a><br>");
 
@@ -1158,9 +1158,9 @@ function symbol_report($url_params,
     if (array_key_exists($stat, $sortable_columns)) {
 
       $href = "$base_path/?" .
-        http_build_query(xhprof_array_set($url_params,
+        http_build_query(uprofiler_array_set($url_params,
                                           'sort', $stat));
-      $header = xhprof_render_link($desc, $href);
+      $header = uprofiler_render_link($desc, $href);
     } else {
       $header = $desc;
     }
@@ -1226,7 +1226,7 @@ function symbol_report($url_params,
     $base_info[$metric] = $symbol_info[$metric];
   }
   foreach ($run_data as $parent_child => $info) {
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
     if (($child == $rep_symbol) && ($parent)) {
       $info_tmp = $info;
       $info_tmp["fn"] = $parent;
@@ -1244,7 +1244,7 @@ function symbol_report($url_params,
   $results = array();
   $base_ct = 0;
   foreach ($run_data as $parent_child => $info) {
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
     if ($parent == $rep_symbol) {
       $info_tmp = $info;
       $info_tmp["fn"] = $child;
@@ -1264,7 +1264,7 @@ function symbol_report($url_params,
   print("</table>");
 
   // These will be used for pop-up tips/help.
-  // Related javascript code is in: xhprof_report.js
+  // Related javascript code is in: uprofiler_report.js
   print("\n");
   print('<script language="javascript">' . "\n");
   print("var func_name = '\"" . $rep_symbol . "\"';\n");
@@ -1300,16 +1300,16 @@ function symbol_report($url_params,
  * @author Kannan
  */
 function profiler_single_run_report ($url_params,
-                                     $xhprof_data,
+                                     $uprofiler_data,
                                      $run_desc,
                                      $rep_symbol,
                                      $sort,
                                      $run) {
 
-  init_metrics($xhprof_data, $rep_symbol, $sort, false);
+  init_metrics($uprofiler_data, $rep_symbol, $sort, false);
 
   profiler_report($url_params, $rep_symbol, $sort, $run, $run_desc,
-                  $xhprof_data);
+                  $uprofiler_data);
 }
 
 
@@ -1320,9 +1320,9 @@ function profiler_single_run_report ($url_params,
  * @author Kannan
  */
 function profiler_diff_report($url_params,
-                              $xhprof_data1,
+                              $uprofiler_data1,
                               $run1_desc,
-                              $xhprof_data2,
+                              $uprofiler_data2,
                               $run2_desc,
                               $rep_symbol,
                               $sort,
@@ -1331,17 +1331,17 @@ function profiler_diff_report($url_params,
 
 
   // Initialize what metrics we'll display based on data in Run2
-  init_metrics($xhprof_data2, $rep_symbol, $sort, true);
+  init_metrics($uprofiler_data2, $rep_symbol, $sort, true);
 
   profiler_report($url_params,
                   $rep_symbol,
                   $sort,
                   $run1,
                   $run1_desc,
-                  $xhprof_data1,
+                  $uprofiler_data1,
                   $run2,
                   $run2_desc,
-                  $xhprof_data2);
+                  $uprofiler_data2);
 }
 
 
@@ -1350,7 +1350,7 @@ function profiler_diff_report($url_params,
  * as arguments. The first argument is an object that implements
  * the iXHProfRuns interface.
  *
- * @param object  $xhprof_runs_impl  An object that implements
+ * @param object  $uprofiler_runs_impl  An object that implements
  *                                   the iXHProfRuns interface
  *.
  * @param array   $url_params   Array of non-default URL params.
@@ -1379,7 +1379,7 @@ function profiler_diff_report($url_params,
  * @param string  $run2         New run id (for diff reports)
  *
  */
-function displayXHProfReport($xhprof_runs_impl, $url_params, $source,
+function displayXHProfReport($uprofiler_runs_impl, $url_params, $source,
                              $run, $wts, $symbol, $sort, $run1, $run2) {
 
   if ($run) {                              // specific run to display?
@@ -1392,7 +1392,7 @@ function displayXHProfReport($xhprof_runs_impl, $url_params, $source,
     $runs_array = explode(",", $run);
 
     if (count($runs_array) == 1) {
-      $xhprof_data = $xhprof_runs_impl->get_run($runs_array[0],
+      $uprofiler_data = $uprofiler_runs_impl->get_run($runs_array[0],
                                                 $source,
                                                 $description);
     } else {
@@ -1401,15 +1401,15 @@ function displayXHProfReport($xhprof_runs_impl, $url_params, $source,
       } else {
         $wts_array = null;
       }
-      $data = xhprof_aggregate_runs($xhprof_runs_impl,
+      $data = uprofiler_aggregate_runs($uprofiler_runs_impl,
                                     $runs_array, $wts_array, $source, false);
-      $xhprof_data = $data['raw'];
+      $uprofiler_data = $data['raw'];
       $description = $data['description'];
     }
 
 
     profiler_single_run_report($url_params,
-                               $xhprof_data,
+                               $uprofiler_data,
                                $description,
                                $symbol,
                                $sort,
@@ -1417,13 +1417,13 @@ function displayXHProfReport($xhprof_runs_impl, $url_params, $source,
 
   } else if ($run1 && $run2) {                  // diff report for two runs
 
-    $xhprof_data1 = $xhprof_runs_impl->get_run($run1, $source, $description1);
-    $xhprof_data2 = $xhprof_runs_impl->get_run($run2, $source, $description2);
+    $uprofiler_data1 = $uprofiler_runs_impl->get_run($run1, $source, $description1);
+    $uprofiler_data2 = $uprofiler_runs_impl->get_run($run2, $source, $description2);
 
     profiler_diff_report($url_params,
-                         $xhprof_data1,
+                         $uprofiler_data1,
                          $description1,
-                         $xhprof_data2,
+                         $uprofiler_data2,
                          $description2,
                          $symbol,
                          $sort,
@@ -1432,8 +1432,8 @@ function displayXHProfReport($xhprof_runs_impl, $url_params, $source,
 
   } else {
     echo "No XHProf runs specified in the URL.";
-    if (method_exists($xhprof_runs_impl, 'list_runs')) {
-      $xhprof_runs_impl->list_runs();
+    if (method_exists($uprofiler_runs_impl, 'list_runs')) {
+      $uprofiler_runs_impl->list_runs();
     }
   }
 }

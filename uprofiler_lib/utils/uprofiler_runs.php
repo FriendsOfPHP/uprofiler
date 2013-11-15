@@ -52,7 +52,7 @@ interface iXHProfRuns {
    * Returns the run id for the saved XHProf run.
    *
    */
-  public function save_run($xhprof_data, $type, $run_id = null);
+  public function save_run($uprofiler_data, $type, $run_id = null);
 }
 
 
@@ -61,14 +61,14 @@ interface iXHProfRuns {
  * iXHProfRuns interface for saving/fetching XHProf runs.
  *
  * It stores/retrieves runs to/from a filesystem directory
- * specified by the "xhprof.output_dir" ini parameter.
+ * specified by the "uprofiler.output_dir" ini parameter.
  *
  * @author Kannan
  */
 class XHProfRuns_Default implements iXHProfRuns {
 
   private $dir = '';
-  private $suffix = 'xhprof';
+  private $suffix = 'uprofiler';
 
   private function gen_run_id($type) {
     return uniqid();
@@ -87,21 +87,21 @@ class XHProfRuns_Default implements iXHProfRuns {
   public function __construct($dir = null) {
 
     // if user hasn't passed a directory location,
-    // we use the xhprof.output_dir ini setting
+    // we use the uprofiler.output_dir ini setting
     // if specified, else we default to the directory
     // in which the error_log file resides.
 
     if (empty($dir)) {
-      $dir = ini_get("xhprof.output_dir");
+      $dir = ini_get("uprofiler.output_dir");
       if (empty($dir)) {
 
         // some default that at least works on unix...
         $dir = "/tmp";
 
-        xhprof_error("Warning: Must specify directory location for XHProf runs. ".
+        uprofiler_error("Warning: Must specify directory location for XHProf runs. ".
                      "Trying {$dir} as default. You can either pass the " .
                      "directory location as an argument to the constructor ".
-                     "for XHProfRuns_Default() or set xhprof.output_dir ".
+                     "for XHProfRuns_Default() or set uprofiler.output_dir ".
                      "ini param.");
       }
     }
@@ -112,7 +112,7 @@ class XHProfRuns_Default implements iXHProfRuns {
     $file_name = $this->file_name($run_id, $type);
 
     if (!file_exists($file_name)) {
-      xhprof_error("Could not find file $file_name");
+      uprofiler_error("Could not find file $file_name");
       $run_desc = "Invalid Run Id = $run_id";
       return null;
     }
@@ -122,11 +122,11 @@ class XHProfRuns_Default implements iXHProfRuns {
     return unserialize($contents);
   }
 
-  public function save_run($xhprof_data, $type, $run_id = null) {
+  public function save_run($uprofiler_data, $type, $run_id = null) {
 
     // Use PHP serialize function to store the XHProf's
     // raw profiler data.
-    $xhprof_data = serialize($xhprof_data);
+    $uprofiler_data = serialize($uprofiler_data);
 
     if ($run_id === null) {
       $run_id = $this->gen_run_id($type);
@@ -136,10 +136,10 @@ class XHProfRuns_Default implements iXHProfRuns {
     $file = fopen($file_name, 'w');
 
     if ($file) {
-      fwrite($file, $xhprof_data);
+      fwrite($file, $uprofiler_data);
       fclose($file);
     } else {
-      xhprof_error("Could not open $file_name\n");
+      uprofiler_error("Could not open $file_name\n");
     }
 
     // echo "Saved run in {$file_name}.\nRun id = {$run_id}.\n";

@@ -27,7 +27,7 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
-#include "php_xhprof.h"
+#include "php_uprofiler.h"
 #include "zend_extensions.h"
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -150,7 +150,7 @@ typedef void (*hp_begin_function_cb) (hp_entry_t **entries,
                                       hp_entry_t *current   TSRMLS_DC);
 typedef void (*hp_end_function_cb)   (hp_entry_t **entries  TSRMLS_DC);
 
-/* Struct to hold the various callbacks for a single xhprof mode */
+/* Struct to hold the various callbacks for a single uprofiler mode */
 typedef struct hp_mode_cb {
   hp_init_cb             init_cb;
   hp_exit_cb             exit_cb;
@@ -167,16 +167,16 @@ typedef struct hp_global_t {
 
   /*       ----------   Global attributes:  -----------       */
 
-  /* Indicates if xhprof is currently enabled */
+  /* Indicates if uprofiler is currently enabled */
   int              enabled;
 
-  /* Indicates if xhprof was ever enabled during this request */
+  /* Indicates if uprofiler was ever enabled during this request */
   int              ever_enabled;
 
-  /* Holds all the xhprof statistics */
+  /* Holds all the uprofiler statistics */
   zval            *stats_count;
 
-  /* Indicates the current xhprof mode or level */
+  /* Indicates the current uprofiler mode or level */
   int              profiler_level;
 
   /* Top of the profile stack */
@@ -185,7 +185,7 @@ typedef struct hp_global_t {
   /* freelist of hp_entry_t chunks for reuse... */
   hp_entry_t      *entry_free_list;
 
-  /* Callbacks for various xhprof modes */
+  /* Callbacks for various uprofiler modes */
   hp_mode_cb       mode_cb;
 
   /*       ----------   Mode specific attributes:  -----------       */
@@ -213,7 +213,7 @@ typedef struct hp_global_t {
   uint32 cur_cpu_id;
 
   /* XHProf flags */
-  uint32 xhprof_flags;
+  uint32 uprofiler_flags;
 
   /* counter table indexed by hash value of function names. */
   uint8  func_hash_counters[256];
@@ -268,7 +268,7 @@ static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filen
  */
 static void hp_register_constants(INIT_FUNC_ARGS);
 
-static void hp_begin(long level, long xhprof_flags TSRMLS_DC);
+static void hp_begin(long level, long uprofiler_flags TSRMLS_DC);
 static void hp_stop(TSRMLS_D);
 static void hp_end(TSRMLS_D);
 
@@ -294,18 +294,18 @@ static inline char **hp_strings_in_zval(zval  *values);
 static inline void   hp_array_del(char **name_array);
 
 /* {{{ arginfo */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_xhprof_enable, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
   ZEND_ARG_INFO(0, flags)
   ZEND_ARG_INFO(0, options)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_xhprof_disable, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_uprofiler_disable, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_xhprof_sample_enable, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_uprofiler_sample_enable, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_xhprof_sample_disable, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_uprofiler_sample_disable, 0)
 ZEND_END_ARG_INFO()
 /* }}} */
 
@@ -322,27 +322,27 @@ int bind_to_cpu(uint32 cpu_id);
  * PHP EXTENSION GLOBALS
  * *********************
  */
-/* List of functions implemented/exposed by xhprof */
-zend_function_entry xhprof_functions[] = {
-  PHP_FE(xhprof_enable, arginfo_xhprof_enable)
-  PHP_FE(xhprof_disable, arginfo_xhprof_disable)
-  PHP_FE(xhprof_sample_enable, arginfo_xhprof_sample_enable)
-  PHP_FE(xhprof_sample_disable, arginfo_xhprof_sample_disable)
+/* List of functions implemented/exposed by uprofiler */
+zend_function_entry uprofiler_functions[] = {
+  PHP_FE(uprofiler_enable, arginfo_uprofiler_enable)
+  PHP_FE(uprofiler_disable, arginfo_uprofiler_disable)
+  PHP_FE(uprofiler_sample_enable, arginfo_uprofiler_sample_enable)
+  PHP_FE(uprofiler_sample_disable, arginfo_uprofiler_sample_disable)
   {NULL, NULL, NULL}
 };
 
-/* Callback functions for the xhprof extension */
-zend_module_entry xhprof_module_entry = {
+/* Callback functions for the uprofiler extension */
+zend_module_entry uprofiler_module_entry = {
 #if ZEND_MODULE_API_NO >= 20010901
   STANDARD_MODULE_HEADER,
 #endif
-  "xhprof",                        /* Name of the extension */
-  xhprof_functions,                /* List of functions exposed */
-  PHP_MINIT(xhprof),               /* Module init callback */
-  PHP_MSHUTDOWN(xhprof),           /* Module shutdown callback */
-  PHP_RINIT(xhprof),               /* Request init callback */
-  PHP_RSHUTDOWN(xhprof),           /* Request shutdown callback */
-  PHP_MINFO(xhprof),               /* Module info callback */
+  "uprofiler",                        /* Name of the extension */
+  uprofiler_functions,                /* List of functions exposed */
+  PHP_MINIT(uprofiler),               /* Module init callback */
+  PHP_MSHUTDOWN(uprofiler),           /* Module shutdown callback */
+  PHP_RINIT(uprofiler),               /* Request init callback */
+  PHP_RSHUTDOWN(uprofiler),           /* Request shutdown callback */
+  PHP_MINFO(uprofiler),               /* Module info callback */
 #if ZEND_MODULE_API_NO >= 20010901
   XHPROF_VERSION,
 #endif
@@ -357,12 +357,12 @@ PHP_INI_BEGIN()
  * choose to save/restore XHProf profiler runs in the
  * directory specified by this ini setting.
  */
-PHP_INI_ENTRY("xhprof.output_dir", "", PHP_INI_ALL, NULL)
+PHP_INI_ENTRY("uprofiler.output_dir", "", PHP_INI_ALL, NULL)
 
 PHP_INI_END()
 
 /* Init module */
-ZEND_GET_MODULE(xhprof)
+ZEND_GET_MODULE(uprofiler)
 
 
 /**
@@ -378,18 +378,18 @@ ZEND_GET_MODULE(xhprof)
  * @return void
  * @author kannan
  */
-PHP_FUNCTION(xhprof_enable) {
-  long  xhprof_flags = 0;                                    /* XHProf flags */
+PHP_FUNCTION(uprofiler_enable) {
+  long  uprofiler_flags = 0;                                    /* XHProf flags */
   zval *optional_array = NULL;         /* optional array arg: for future use */
 
   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-                            "|lz", &xhprof_flags, &optional_array) == FAILURE) {
+                            "|lz", &uprofiler_flags, &optional_array) == FAILURE) {
     return;
   }
 
   hp_get_ignored_functions_from_arg(optional_array);
 
-  hp_begin(XHPROF_MODE_HIERARCHICAL, xhprof_flags TSRMLS_CC);
+  hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags TSRMLS_CC);
 }
 
 /**
@@ -400,7 +400,7 @@ PHP_FUNCTION(xhprof_enable) {
  * @return array  hash-array of XHProf's profile info
  * @author kannan, hzhao
  */
-PHP_FUNCTION(xhprof_disable) {
+PHP_FUNCTION(uprofiler_disable) {
   if (hp_globals.enabled) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
@@ -414,10 +414,10 @@ PHP_FUNCTION(xhprof_disable) {
  * @return void
  * @author cjiang
  */
-PHP_FUNCTION(xhprof_sample_enable) {
-  long  xhprof_flags = 0;                                    /* XHProf flags */
+PHP_FUNCTION(uprofiler_sample_enable) {
+  long  uprofiler_flags = 0;                                    /* XHProf flags */
   hp_get_ignored_functions_from_arg(NULL);
-  hp_begin(XHPROF_MODE_SAMPLED, xhprof_flags TSRMLS_CC);
+  hp_begin(XHPROF_MODE_SAMPLED, uprofiler_flags TSRMLS_CC);
 }
 
 /**
@@ -428,7 +428,7 @@ PHP_FUNCTION(xhprof_sample_enable) {
  * @return array  hash-array of XHProf's profile info
  * @author cjiang
  */
-PHP_FUNCTION(xhprof_sample_disable) {
+PHP_FUNCTION(uprofiler_sample_disable) {
   if (hp_globals.enabled) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
@@ -441,7 +441,7 @@ PHP_FUNCTION(xhprof_sample_disable) {
  *
  * @author cjiang
  */
-PHP_MINIT_FUNCTION(xhprof) {
+PHP_MINIT_FUNCTION(uprofiler) {
   int i;
 
   REGISTER_INI_ENTRIES();
@@ -486,7 +486,7 @@ PHP_MINIT_FUNCTION(xhprof) {
 /**
  * Module shutdown callback.
  */
-PHP_MSHUTDOWN_FUNCTION(xhprof) {
+PHP_MSHUTDOWN_FUNCTION(uprofiler) {
   /* Make sure cpu_frequencies is free'ed. */
   clear_frequencies();
 
@@ -501,22 +501,22 @@ PHP_MSHUTDOWN_FUNCTION(xhprof) {
 /**
  * Request init callback. Nothing to do yet!
  */
-PHP_RINIT_FUNCTION(xhprof) {
+PHP_RINIT_FUNCTION(uprofiler) {
   return SUCCESS;
 }
 
 /**
  * Request shutdown callback. Stop profiling and return.
  */
-PHP_RSHUTDOWN_FUNCTION(xhprof) {
+PHP_RSHUTDOWN_FUNCTION(uprofiler) {
   hp_end(TSRMLS_C);
   return SUCCESS;
 }
 
 /**
- * Module info callback. Returns the xhprof version.
+ * Module info callback. Returns the uprofiler version.
  */
-PHP_MINFO_FUNCTION(xhprof)
+PHP_MINFO_FUNCTION(uprofiler)
 {
   char buf[SCRATCH_BUF_LEN];
   char tmp[SCRATCH_BUF_LEN];
@@ -524,7 +524,7 @@ PHP_MINFO_FUNCTION(xhprof)
   int len;
 
   php_info_print_table_start();
-  php_info_print_table_header(2, "xhprof", XHPROF_VERSION);
+  php_info_print_table_header(2, "uprofiler", XHPROF_VERSION);
   len = snprintf(buf, SCRATCH_BUF_LEN, "%d", hp_globals.cpu_num);
   buf[len] = 0;
   php_info_print_table_header(2, "CPU num", buf);
@@ -1515,12 +1515,12 @@ void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
   current->tsc_start = cycle_timer();
 
   /* Get CPU usage */
-  if (hp_globals.xhprof_flags & XHPROF_FLAGS_CPU) {
+  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_CPU) {
     getrusage(RUSAGE_SELF, &(current->ru_start_hprof));
   }
 
   /* Get memory usage */
-  if (hp_globals.xhprof_flags & XHPROF_FLAGS_MEMORY) {
+  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_MEMORY) {
     current->mu_start_hprof  = zend_memory_usage(0 TSRMLS_CC);
     current->pmu_start_hprof = zend_memory_peak_usage(0 TSRMLS_CC);
   }
@@ -1591,7 +1591,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
     return;
   }
 
-  if (hp_globals.xhprof_flags & XHPROF_FLAGS_CPU) {
+  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_CPU) {
     /* Get CPU usage */
     getrusage(RUSAGE_SELF, &ru_end);
 
@@ -1603,7 +1603,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
               TSRMLS_CC);
   }
 
-  if (hp_globals.xhprof_flags & XHPROF_FLAGS_MEMORY) {
+  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_MEMORY) {
     /* Get Memory usage */
     mu_end  = zend_memory_usage(0 TSRMLS_CC);
     pmu_end = zend_memory_peak_usage(0 TSRMLS_CC);
@@ -1798,16 +1798,16 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  */
 
 /**
- * This function gets called once when xhprof gets enabled.
+ * This function gets called once when uprofiler gets enabled.
  * It replaces all the functions like zend_execute, zend_execute_internal,
  * etc that needs to be instrumented with their corresponding proxies.
  */
-static void hp_begin(long level, long xhprof_flags TSRMLS_DC) {
+static void hp_begin(long level, long uprofiler_flags TSRMLS_DC) {
   if (!hp_globals.enabled) {
     int hp_profile_flag = 1;
 
     hp_globals.enabled      = 1;
-    hp_globals.xhprof_flags = (uint32)xhprof_flags;
+    hp_globals.uprofiler_flags = (uint32)uprofiler_flags;
 
     /* Replace zend_compile with our proxy */
     _zend_compile_file = zend_compile_file;
@@ -1828,7 +1828,7 @@ static void hp_begin(long level, long xhprof_flags TSRMLS_DC) {
 
     /* Replace zend_execute_internal with our proxy */
     _zend_execute_internal = zend_execute_internal;
-    if (!(hp_globals.xhprof_flags & XHPROF_FLAGS_NO_BUILTINS)) {
+    if (!(hp_globals.uprofiler_flags & XHPROF_FLAGS_NO_BUILTINS)) {
       /* if NO_BUILTINS is not set (i.e. user wants to profile builtins),
        * then we intercept internal (builtin) function calls.
        */
@@ -1883,7 +1883,7 @@ static void hp_end(TSRMLS_D) {
 }
 
 /**
- * Called from xhprof_disable(). Removes all the proxies setup by
+ * Called from uprofiler_disable(). Removes all the proxies setup by
  * hp_begin() and restores the original values.
  */
 static void hp_stop(TSRMLS_D) {

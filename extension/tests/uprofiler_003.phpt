@@ -32,7 +32,7 @@ class C {
 }
 
 
-xhprof_enable();
+uprofiler_enable();
 
 // static methods
 echo C::outer_static() . "\n";
@@ -47,7 +47,7 @@ $obj->get_attr();
 $obj = null;
 
 
-$output = xhprof_disable();
+$output = uprofiler_disable();
 
 echo "Profiler data for 'Class' tests:\n";
 print_canonical($output);
@@ -65,4 +65,4 @@ main()==>C::__construct                 : ct=       1; wt=*;
 main()==>C::__destruct                  : ct=       1; wt=*;
 main()==>C::get_attr                    : ct=       1; wt=*;
 main()==>C::outer_static                : ct=       1; wt=*;
-main()==>xhprof_disable                 : ct=       1; wt=*;
+main()==>uprofiler_disable              : ct=       1; wt=*;

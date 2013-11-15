@@ -19,7 +19,7 @@
 // Do not add any display specific code here.
 //
 
-function xhprof_error($message) {
+function uprofiler_error($message) {
   error_log($message);
 }
 
@@ -29,7 +29,7 @@ function xhprof_error($message) {
  *
  * @author Kannan
  */
-function xhprof_get_possible_metrics() {
+function uprofiler_get_possible_metrics() {
  static $possible_metrics =
    array("wt" => array("Wall", "microsecs", "walltime"),
          "ut" => array("User", "microsecs", "user cpu time"),
@@ -47,7 +47,7 @@ function xhprof_get_possible_metrics() {
  *
  * @author Kannan
  */
-function init_metrics($xhprof_data, $rep_symbol, $sort, $diff_report = false) {
+function init_metrics($uprofiler_data, $rep_symbol, $sort, $diff_report = false) {
   global $stats;
   global $pc_stats;
   global $metrics;
@@ -68,7 +68,7 @@ function init_metrics($xhprof_data, $rep_symbol, $sort, $diff_report = false) {
 
   // For C++ profiler runs, walltime attribute isn't present.
   // In that case, use "samples" as the default sort column.
-  if (!isset($xhprof_data["main()"]["wt"])) {
+  if (!isset($uprofiler_data["main()"]["wt"])) {
 
     if ($sort_col == "wt") {
       $sort_col = "samples";
@@ -98,9 +98,9 @@ function init_metrics($xhprof_data, $rep_symbol, $sort, $diff_report = false) {
 
   $pc_stats = $stats;
 
-  $possible_metrics = xhprof_get_possible_metrics($xhprof_data);
+  $possible_metrics = uprofiler_get_possible_metrics($uprofiler_data);
   foreach ($possible_metrics as $metric => $desc) {
-    if (isset($xhprof_data["main()"][$metric])) {
+    if (isset($uprofiler_data["main()"][$metric])) {
       $metrics[] = $metric;
       // flat (top-level reports): we can compute
       // exclusive metrics reports as well.
@@ -118,20 +118,20 @@ function init_metrics($xhprof_data, $rep_symbol, $sort, $diff_report = false) {
 }
 
 /*
- * Get the list of metrics present in $xhprof_data as an array.
+ * Get the list of metrics present in $uprofiler_data as an array.
  *
  * @author Kannan
  */
-function xhprof_get_metrics($xhprof_data) {
+function uprofiler_get_metrics($uprofiler_data) {
 
   // get list of valid metrics
-  $possible_metrics = xhprof_get_possible_metrics();
+  $possible_metrics = uprofiler_get_possible_metrics();
 
   // return those that are present in the raw data.
   // We'll just look at the root of the subtree for this.
   $metrics = array();
   foreach ($possible_metrics as $metric => $desc) {
-    if (isset($xhprof_data["main()"][$metric])) {
+    if (isset($uprofiler_data["main()"][$metric])) {
       $metrics[] = $metric;
     }
   }
@@ -145,7 +145,7 @@ function xhprof_get_metrics($xhprof_data) {
  *
  * @author Kannan
  */
-function xhprof_parse_parent_child($parent_child) {
+function uprofiler_parse_parent_child($parent_child) {
   $ret = explode("==>", $parent_child);
 
   // Return if both parent and child are set
@@ -162,7 +162,7 @@ function xhprof_parse_parent_child($parent_child) {
  *
  * @author Kannan
  */
-function xhprof_build_parent_child_key($parent, $child) {
+function uprofiler_build_parent_child_key($parent, $child) {
   if ($parent) {
     return $parent . "==>" . $child;
   } else {
@@ -183,11 +183,11 @@ function xhprof_build_parent_child_key($parent, $child) {
  *
  *  @author Kannan
  */
-function xhprof_valid_run($run_id, $raw_data) {
+function uprofiler_valid_run($run_id, $raw_data) {
 
   $main_info = $raw_data["main()"];
   if (empty($main_info)) {
-    xhprof_error("XHProf: main() missing in raw data for Run ID: $run_id");
+    uprofiler_error("XHProf: main() missing in raw data for Run ID: $run_id");
     return false;
   }
 
@@ -197,7 +197,7 @@ function xhprof_valid_run($run_id, $raw_data) {
   } else if (isset($main_info["samples"])) {
     $metric = "samples";
   } else {
-    xhprof_error("XHProf: Wall Time information missing from Run ID: $run_id");
+    uprofiler_error("XHProf: Wall Time information missing from Run ID: $run_id");
     return false;
   }
 
@@ -206,12 +206,12 @@ function xhprof_valid_run($run_id, $raw_data) {
 
     // basic sanity checks...
     if ($val < 0) {
-      xhprof_error("XHProf: $metric should not be negative: Run ID $run_id"
+      uprofiler_error("XHProf: $metric should not be negative: Run ID $run_id"
                    . serialize($info));
       return false;
     }
     if ($val > (86400000000)) {
-      xhprof_error("XHProf: $metric > 1 day found in Run ID: $run_id "
+      uprofiler_error("XHProf: $metric > 1 day found in Run ID: $run_id "
                    . serialize($info));
       return false;
     }
@@ -237,7 +237,7 @@ function xhprof_valid_run($run_id, $raw_data) {
  *
  * @author Kannan
  */
-function xhprof_trim_run($raw_data, $functions_to_keep) {
+function uprofiler_trim_run($raw_data, $functions_to_keep) {
 
   // convert list of functions to a hash with function as the key
   $function_map = array_fill_keys($functions_to_keep, 1);
@@ -248,7 +248,7 @@ function xhprof_trim_run($raw_data, $functions_to_keep) {
 
   $new_raw_data = array();
   foreach ($raw_data as $parent_child => $info) {
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
 
     if (isset($function_map[$parent]) || isset($function_map[$child])) {
       $new_raw_data[$parent_child] = $info;
@@ -265,7 +265,7 @@ function xhprof_trim_run($raw_data, $functions_to_keep) {
  *
  * @author Kannan
  */
-function xhprof_normalize_metrics($raw_data, $num_runs) {
+function uprofiler_normalize_metrics($raw_data, $num_runs) {
 
   if (empty($raw_data) || ($num_runs == 0)) {
     return $raw_data;
@@ -274,7 +274,7 @@ function xhprof_normalize_metrics($raw_data, $num_runs) {
   $raw_data_total = array();
 
   if (isset($raw_data["==>main()"]) && isset($raw_data["main()"])) {
-    xhprof_error("XHProf Error: both ==>main() and main() set in raw data...");
+    uprofiler_error("XHProf Error: both ==>main() and main() set in raw data...");
   }
 
   foreach ($raw_data as $parent_child => $info) {
@@ -298,12 +298,12 @@ function xhprof_normalize_metrics($raw_data, $num_runs) {
  * and you want to accumulate these runs in a 2:4:1 ratio. You
  * can do so by calling:
  *
- *     xhprof_aggregate_runs(array(5, 6, 7), array(2, 4, 1));
+ *     uprofiler_aggregate_runs(array(5, 6, 7), array(2, 4, 1));
  *
  * The above will return raw data for the runs aggregated
  * in 2:4:1 ratio.
  *
- *  @param object  $xhprof_runs_impl  An object that implements
+ *  @param object  $uprofiler_runs_impl  An object that implements
  *                                    the iXHProfRuns interface
  *  @param  array  $runs            run ids of the XHProf runs..
  *  @param  array  $wts             integral (ideally) weights for $runs
@@ -317,7 +317,7 @@ function xhprof_normalize_metrics($raw_data, $num_runs) {
  *
  *  @author Kannan
  */
-function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
+function uprofiler_aggregate_runs($uprofiler_runs_impl, $runs,
                                $wts, $source="phprof",
                                $use_script_name=false) {
 
@@ -337,7 +337,7 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
   $bad_runs = array();
   foreach ($runs as $idx => $run_id) {
 
-    $raw_data = $xhprof_runs_impl->get_run($run_id, $source, $description);
+    $raw_data = $uprofiler_runs_impl->get_run($run_id, $source, $description);
 
     // use the first run to derive what metrics to aggregate on.
     if ($idx == 0) {
@@ -353,7 +353,7 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
       }
     }
 
-    if (!xhprof_valid_run($run_id, $raw_data)) {
+    if (!uprofiler_valid_run($run_id, $raw_data)) {
       $bad_runs[] = $run_id;
       continue;
     }
@@ -375,7 +375,7 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
           $new_main[$metric]  = $val + 0.00001;
         }
         $raw_data["main()"] = $new_main;
-        $raw_data[xhprof_build_parent_child_key("main()",
+        $raw_data[uprofiler_build_parent_child_key("main()",
                                                 "__script::$page")]
           = $fake_edge;
       } else {
@@ -395,7 +395,7 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
           $child = substr($parent_child, 9);
           // ignore the newly added edge from main()
           if (substr($child, 0, 10) != "__script::") {
-            $parent_child = xhprof_build_parent_child_key("__script::$page",
+            $parent_child = uprofiler_build_parent_child_key("__script::$page",
                                                           $child);
           }
         }
@@ -427,7 +427,7 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
 
   $data['description'] = "Aggregated Report for $run_count runs: ".
                          "$runs_string $wts_string\n";
-  $data['raw'] = xhprof_normalize_metrics($raw_data_total,
+  $data['raw'] = uprofiler_normalize_metrics($raw_data_total,
                                           $normalization_count);
   $data['bad_runs'] = $bad_runs;
 
@@ -451,11 +451,11 @@ function xhprof_aggregate_runs($xhprof_runs_impl, $runs,
  *
  * @author Kannan Muthukkaruppan
  */
-function xhprof_compute_flat_info($raw_data, &$overall_totals) {
+function uprofiler_compute_flat_info($raw_data, &$overall_totals) {
 
   global $display_calls;
 
-  $metrics = xhprof_get_metrics($raw_data);
+  $metrics = uprofiler_get_metrics($raw_data);
 
   $overall_totals = array("ct" => 0,
                            "wt" => 0,
@@ -468,7 +468,7 @@ function xhprof_compute_flat_info($raw_data, &$overall_totals) {
                            );
 
   // compute inclusive times for each function
-  $symbol_tab = xhprof_compute_inclusive_times($raw_data);
+  $symbol_tab = uprofiler_compute_inclusive_times($raw_data);
 
   /* total metric value is the metric value for "main()" */
   foreach ($metrics as $metric) {
@@ -492,7 +492,7 @@ function xhprof_compute_flat_info($raw_data, &$overall_totals) {
 
   /* adjust exclusive times by deducting inclusive time of children */
   foreach ($raw_data as $parent_child => $info) {
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
 
     if ($parent) {
       foreach ($metrics as $metric) {
@@ -513,46 +513,46 @@ function xhprof_compute_flat_info($raw_data, &$overall_totals) {
  *
  * @author Kannan
  */
-function xhprof_compute_diff($xhprof_data1, $xhprof_data2) {
+function uprofiler_compute_diff($uprofiler_data1, $uprofiler_data2) {
   global $display_calls;
 
   // use the second run to decide what metrics we will do the diff on
-  $metrics = xhprof_get_metrics($xhprof_data2);
+  $metrics = uprofiler_get_metrics($uprofiler_data2);
 
-  $xhprof_delta = $xhprof_data2;
+  $uprofiler_delta = $uprofiler_data2;
 
-  foreach ($xhprof_data1 as $parent_child => $info) {
+  foreach ($uprofiler_data1 as $parent_child => $info) {
 
-    if (!isset($xhprof_delta[$parent_child])) {
+    if (!isset($uprofiler_delta[$parent_child])) {
 
       // this pc combination was not present in run1;
       // initialize all values to zero.
       if ($display_calls) {
-        $xhprof_delta[$parent_child] = array("ct" => 0);
+        $uprofiler_delta[$parent_child] = array("ct" => 0);
       } else {
-        $xhprof_delta[$parent_child] = array();
+        $uprofiler_delta[$parent_child] = array();
       }
       foreach ($metrics as $metric) {
-        $xhprof_delta[$parent_child][$metric] = 0;
+        $uprofiler_delta[$parent_child][$metric] = 0;
       }
     }
 
     if ($display_calls) {
-      $xhprof_delta[$parent_child]["ct"] -= $info["ct"];
+      $uprofiler_delta[$parent_child]["ct"] -= $info["ct"];
     }
 
     foreach ($metrics as $metric) {
-      $xhprof_delta[$parent_child][$metric] -= $info[$metric];
+      $uprofiler_delta[$parent_child][$metric] -= $info[$metric];
     }
   }
 
-  return $xhprof_delta;
+  return $uprofiler_delta;
 }
 
 
 /**
  * Compute inclusive metrics for function. This code was factored out
- * of xhprof_compute_flat_info().
+ * of uprofiler_compute_flat_info().
  *
  * The raw data contains inclusive metrics of a function for each
  * unique parent function it is called from. The total inclusive metrics
@@ -564,10 +564,10 @@ function xhprof_compute_diff($xhprof_data1, $xhprof_data2) {
  *
  * @author Kannan
  */
-function xhprof_compute_inclusive_times($raw_data) {
+function uprofiler_compute_inclusive_times($raw_data) {
   global $display_calls;
 
-  $metrics = xhprof_get_metrics($raw_data);
+  $metrics = uprofiler_get_metrics($raw_data);
 
   $symbol_tab = array();
 
@@ -578,7 +578,7 @@ function xhprof_compute_inclusive_times($raw_data) {
    */
   foreach ($raw_data as $parent_child => $info) {
 
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
 
     if ($parent == $child) {
       /*
@@ -586,7 +586,7 @@ function xhprof_compute_inclusive_times($raw_data) {
        * Recursion is handled in the XHProf PHP extension by giving nested
        * calls a unique recursion-depth appended name (for example, foo@1).
        */
-      xhprof_error("Error in Raw Data: parent & child are both: $parent");
+      uprofiler_error("Error in Raw Data: parent & child are both: $parent");
       return;
     }
 
@@ -636,11 +636,11 @@ function xhprof_compute_inclusive_times($raw_data) {
  *
  *  @author Kannan
  */
-function xhprof_prune_run($raw_data, $prune_percent) {
+function uprofiler_prune_run($raw_data, $prune_percent) {
 
   $main_info = $raw_data["main()"];
   if (empty($main_info)) {
-    xhprof_error("XHProf: main() missing in raw data");
+    uprofiler_error("XHProf: main() missing in raw data");
     return false;
   }
 
@@ -650,7 +650,7 @@ function xhprof_prune_run($raw_data, $prune_percent) {
   } else if (isset($main_info["samples"])) {
     $prune_metric = "samples";
   } else {
-    xhprof_error("XHProf: for main() we must have either wt "
+    uprofiler_error("XHProf: for main() we must have either wt "
                  ."or samples attribute set");
     return false;
   }
@@ -666,11 +666,11 @@ function xhprof_prune_run($raw_data, $prune_percent) {
   $prune_threshold = (($main_info[$prune_metric] * $prune_percent) / 100.0);
 
   init_metrics($raw_data, null, null, false);
-  $flat_info = xhprof_compute_inclusive_times($raw_data);
+  $flat_info = uprofiler_compute_inclusive_times($raw_data);
 
   foreach ($raw_data as $parent_child => $info) {
 
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
 
     // is this child's overall total from all parents less than threshold?
     if ($flat_info[$child][$prune_metric] < $prune_threshold) {
@@ -683,7 +683,7 @@ function xhprof_prune_run($raw_data, $prune_percent) {
       // All edges to the parent node will get nuked, and this child will
       // be a dangling child.
       // So instead change its parent to be a special function __pruned__().
-      $pruned_edge = xhprof_build_parent_child_key("__pruned__()", $child);
+      $pruned_edge = uprofiler_build_parent_child_key("__pruned__()", $child);
 
       if (isset($raw_data[$pruned_edge])) {
         foreach ($metrics as $metric) {
@@ -706,7 +706,7 @@ function xhprof_prune_run($raw_data, $prune_percent) {
  *
  * @author Kannan
  */
-function xhprof_array_set($arr, $k, $v) {
+function uprofiler_array_set($arr, $k, $v) {
   $arr[$k] = $v;
   return $arr;
 }
@@ -716,7 +716,7 @@ function xhprof_array_set($arr, $k, $v) {
  *
  * @author Kannan
  */
-function xhprof_array_unset($arr, $k) {
+function uprofiler_array_unset($arr, $k) {
   unset($arr[$k]);
   return $arr;
 }
@@ -732,14 +732,14 @@ define('XHPROF_BOOL_PARAM',   4);
 
 /**
  * Internal helper function used by various
- * xhprof_get_param* flavors for various
+ * uprofiler_get_param* flavors for various
  * types of parameters.
  *
  * @param string   name of the URL query string param
  *
  * @author Kannan
  */
-function xhprof_get_param_helper($param) {
+function uprofiler_get_param_helper($param) {
   $val = null;
   if (isset($_GET[$param]))
     $val = $_GET[$param];
@@ -756,8 +756,8 @@ function xhprof_get_param_helper($param) {
  *
  * @author Kannan
  */
-function xhprof_get_string_param($param, $default = '') {
-  $val = xhprof_get_param_helper($param);
+function uprofiler_get_string_param($param, $default = '') {
+  $val = uprofiler_get_param_helper($param);
 
   if ($val === null)
     return $default;
@@ -775,8 +775,8 @@ function xhprof_get_string_param($param, $default = '') {
  *
  * @author Kannan
  */
-function xhprof_get_uint_param($param, $default = 0) {
-  $val = xhprof_get_param_helper($param);
+function uprofiler_get_uint_param($param, $default = 0) {
+  $val = uprofiler_get_param_helper($param);
 
   if ($val === null)
     $val = $default;
@@ -789,7 +789,7 @@ function xhprof_get_uint_param($param, $default = 0) {
     return $val;
   }
 
-  xhprof_error("$param is $val. It must be an unsigned integer.");
+  uprofiler_error("$param is $val. It must be an unsigned integer.");
   return null;
 }
 
@@ -804,8 +804,8 @@ function xhprof_get_uint_param($param, $default = 0) {
  *
  * @author Kannan
  */
-function xhprof_get_float_param($param, $default = 0) {
-  $val = xhprof_get_param_helper($param);
+function uprofiler_get_float_param($param, $default = 0) {
+  $val = uprofiler_get_param_helper($param);
 
   if ($val === null)
     $val = $default;
@@ -817,7 +817,7 @@ function xhprof_get_float_param($param, $default = 0) {
   if (true) // for now..
     return (float)$val;
 
-  xhprof_error("$param is $val. It must be a float.");
+  uprofiler_error("$param is $val. It must be a float.");
   return null;
 }
 
@@ -831,8 +831,8 @@ function xhprof_get_float_param($param, $default = 0) {
  *
  * @author Kannan
  */
-function xhprof_get_bool_param($param, $default = false) {
-  $val = xhprof_get_param_helper($param);
+function uprofiler_get_bool_param($param, $default = false) {
+  $val = uprofiler_get_param_helper($param);
 
   if ($val === null)
     $val = $default;
@@ -856,7 +856,7 @@ function xhprof_get_bool_param($param, $default = false) {
     $val = false;
     break;
   default:
-    xhprof_error("$param is $val. It must be a valid boolean string.");
+    uprofiler_error("$param is $val. It must be a valid boolean string.");
     return null;
   }
 
@@ -883,24 +883,24 @@ function xhprof_get_bool_param($param, $default = false) {
  *                       used.
  * @author Kannan
  */
-function xhprof_param_init($params) {
+function uprofiler_param_init($params) {
   /* Create variables specified in $params keys, init defaults */
   foreach ($params as $k => $v) {
     switch ($v[0]) {
     case XHPROF_STRING_PARAM:
-      $p = xhprof_get_string_param($k, $v[1]);
+      $p = uprofiler_get_string_param($k, $v[1]);
       break;
     case XHPROF_UINT_PARAM:
-      $p = xhprof_get_uint_param($k, $v[1]);
+      $p = uprofiler_get_uint_param($k, $v[1]);
       break;
     case XHPROF_FLOAT_PARAM:
-      $p = xhprof_get_float_param($k, $v[1]);
+      $p = uprofiler_get_float_param($k, $v[1]);
       break;
     case XHPROF_BOOL_PARAM:
-      $p = xhprof_get_bool_param($k, $v[1]);
+      $p = uprofiler_get_bool_param($k, $v[1]);
       break;
     default:
-      xhprof_error("Invalid param type passed to xhprof_param_init: "
+      uprofiler_error("Invalid param type passed to uprofiler_param_init: "
                    . $v[0]);
       exit();
     }
@@ -922,12 +922,12 @@ function xhprof_param_init($params) {
  *
  * @author Kannan
  */
-function xhprof_get_matching_functions($q, $xhprof_data) {
+function uprofiler_get_matching_functions($q, $uprofiler_data) {
 
   $matches = array();
 
-  foreach ($xhprof_data as $parent_child => $info) {
-    list($parent, $child) = xhprof_parse_parent_child($parent_child);
+  foreach ($uprofiler_data as $parent_child => $info) {
+    list($parent, $child) = uprofiler_parse_parent_child($parent_child);
     if (stripos($parent, $q) !== false) {
       $matches[$parent] = 1;
     }

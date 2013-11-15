@@ -17,7 +17,7 @@
 /**
  * AJAX endpoint for XHProf function name typeahead is implemented
  * as a thin wrapper around this file. The wrapper must set up
- * the global $xhprof_runs_impl to correspond to an object that
+ * the global $uprofiler_runs_impl to correspond to an object that
  * implements the iXHProfRuns interface.
  *
  * @author(s)  Kannan Muthukkaruppan
@@ -25,39 +25,39 @@
  */
 
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/xhprof_lib.php';
+require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_lib.php';
 
 // param name, its type, and default value
 $params = array('q'          => array(XHPROF_STRING_PARAM, ''),
                 'run'        => array(XHPROF_STRING_PARAM, ''),
                 'run1'       => array(XHPROF_STRING_PARAM, ''),
                 'run2'       => array(XHPROF_STRING_PARAM, ''),
-                'source'     => array(XHPROF_STRING_PARAM, 'xhprof'),
+                'source'     => array(XHPROF_STRING_PARAM, 'uprofiler'),
                 );
 
 // pull values of these params, and create named globals for each param
-xhprof_param_init($params);
+uprofiler_param_init($params);
 
 if (!empty($run)) {
 
   // single run mode
-  $raw_data = $xhprof_runs_impl->get_run($run, $source, $desc_unused);
-  $functions = xhprof_get_matching_functions($q, $raw_data);
+  $raw_data = $uprofiler_runs_impl->get_run($run, $source, $desc_unused);
+  $functions = uprofiler_get_matching_functions($q, $raw_data);
 
 } else if (!empty($run1) && !empty($run2)) {
 
   // diff mode
-  $raw_data = $xhprof_runs_impl->get_run($run1, $source, $desc_unused);
-  $functions1 = xhprof_get_matching_functions($q, $raw_data);
+  $raw_data = $uprofiler_runs_impl->get_run($run1, $source, $desc_unused);
+  $functions1 = uprofiler_get_matching_functions($q, $raw_data);
 
-  $raw_data = $xhprof_runs_impl->get_run($run2, $source, $desc_unused);
-  $functions2 = xhprof_get_matching_functions($q, $raw_data);
+  $raw_data = $uprofiler_runs_impl->get_run($run2, $source, $desc_unused);
+  $functions2 = uprofiler_get_matching_functions($q, $raw_data);
 
 
   $functions = array_unique(array_merge($functions1, $functions2));
   asort($functions);
 } else {
-  xhprof_error("no valid runs specified to typeahead endpoint");
+  uprofiler_error("no valid runs specified to typeahead endpoint");
   $functions = array();
 }
 

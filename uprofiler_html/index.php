@@ -31,11 +31,11 @@
 //             Changhao Jiang
 //
 
-// by default assume that xhprof_html & xhprof_lib directories
+// by default assume that uprofiler_html & uprofiler_lib directories
 // are at the same level.
-$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../xhprof_lib';
+$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/xhprof.php';
+require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/uprofiler.php';
 
 // param name, its type, and default value
 $params = array('run'        => array(XHPROF_STRING_PARAM, ''),
@@ -44,12 +44,12 @@ $params = array('run'        => array(XHPROF_STRING_PARAM, ''),
                 'sort'       => array(XHPROF_STRING_PARAM, 'wt'), // wall time
                 'run1'       => array(XHPROF_STRING_PARAM, ''),
                 'run2'       => array(XHPROF_STRING_PARAM, ''),
-                'source'     => array(XHPROF_STRING_PARAM, 'xhprof'),
+                'source'     => array(XHPROF_STRING_PARAM, 'uprofiler'),
                 'all'        => array(XHPROF_UINT_PARAM, 0),
                 );
 
 // pull values of these params, and create named globals for each param
-xhprof_param_init($params);
+uprofiler_param_init($params);
 
 /* reset params to be a array of variable names to values
    by the end of this page, param should only contain values that need
@@ -68,7 +68,7 @@ foreach ($params as $k => $v) {
 echo "<html>";
 
 echo "<head><title>XHProf: Hierarchical Profiler Report</title>";
-xhprof_include_js_css();
+uprofiler_include_js_css();
 echo "</head>";
 
 echo "<body>";
@@ -80,9 +80,9 @@ $vbbar = ' class="vbbar"';
 $vrbar = ' class="vrbar"';
 $vgbar = ' class="vgbar"';
 
-$xhprof_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new XHProfRuns_Default();
 
-displayXHProfReport($xhprof_runs_impl, $params, $source, $run, $wts,
+displayXHProfReport($uprofiler_runs_impl, $params, $source, $run, $wts,
                     $symbol, $sort, $run1, $run2);
 
 

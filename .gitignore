@@ -1,5 +1,5 @@
 extension/*
 !extension/config.m4
-!extension/php_xhprof.h
+!extension/php_uprofiler.h
 !extension/tests/
-!extension/xhprof.c
+!extension/uprofiler.c

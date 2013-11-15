@@ -1,6 +1,6 @@
 <?php
 
-// This file is part of xhprof_004.phpt test.
+// This file is part of uprofiler_004.phpt test.
 
 function bar() {
   echo "I am in bar()...\n";

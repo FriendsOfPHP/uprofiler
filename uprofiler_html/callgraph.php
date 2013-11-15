@@ -29,11 +29,11 @@
  * @author Changhao Jiang (cjiang@facebook.com)
  */
 
-// by default assume that xhprof_html & xhprof_lib directories
+// by default assume that uprofiler_html & uprofiler_lib directories
 // are at the same level.
-$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../xhprof_lib';
+$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/xhprof.php';
+require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/uprofiler.php';
 
 ini_set('max_execution_time', 100);
 
@@ -41,7 +41,7 @@ $params = array(// run id param
                 'run' => array(XHPROF_STRING_PARAM, ''),
 
                 // source/namespace/type of run
-                'source' => array(XHPROF_STRING_PARAM, 'xhprof'),
+                'source' => array(XHPROF_STRING_PARAM, 'uprofiler'),
 
                 // the focus function, if it is set, only directly
                 // parents/children functions of it will be shown.
@@ -66,7 +66,7 @@ $params = array(// run id param
                 );
 
 // pull values of these params, and create named globals for each param
-xhprof_param_init($params);
+uprofiler_param_init($params);
 
 // if invalid value specified for threshold, then use the default
 if ($threshold < 0 || $threshold > 1) {
@@ -74,18 +74,18 @@ if ($threshold < 0 || $threshold > 1) {
 }
 
 // if invalid value specified for type, use the default
-if (!array_key_exists($type, $xhprof_legal_image_types)) {
+if (!array_key_exists($type, $uprofiler_legal_image_types)) {
   $type = $params['type'][1]; // default image type.
 }
 
-$xhprof_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new XHProfRuns_Default();
 
 if (!empty($run)) {
   // single run call graph image generation
-  xhprof_render_image($xhprof_runs_impl, $run, $type,
+  uprofiler_render_image($uprofiler_runs_impl, $run, $type,
                       $threshold, $func, $source, $critical);
 } else {
   // diff report call graph image generation
-  xhprof_render_diff_image($xhprof_runs_impl, $run1, $run2,
+  uprofiler_render_diff_image($uprofiler_runs_impl, $run1, $run2,
                            $type, $threshold, $source);
 }

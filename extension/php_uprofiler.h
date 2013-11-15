@@ -18,8 +18,8 @@
 #ifndef PHP_XHPROF_H
 #define PHP_XHPROF_H
 
-extern zend_module_entry xhprof_module_entry;
-#define phpext_xhprof_ptr &xhprof_module_entry
+extern zend_module_entry uprofiler_module_entry;
+#define phpext_uprofiler_ptr &uprofiler_module_entry
 
 #ifdef PHP_WIN32
 #define PHP_XHPROF_API __declspec(dllexport)
@@ -31,15 +31,15 @@ extern zend_module_entry xhprof_module_entry;
 #include "TSRM.h"
 #endif
 
-PHP_MINIT_FUNCTION(xhprof);
-PHP_MSHUTDOWN_FUNCTION(xhprof);
-PHP_RINIT_FUNCTION(xhprof);
-PHP_RSHUTDOWN_FUNCTION(xhprof);
-PHP_MINFO_FUNCTION(xhprof);
+PHP_MINIT_FUNCTION(uprofiler);
+PHP_MSHUTDOWN_FUNCTION(uprofiler);
+PHP_RINIT_FUNCTION(uprofiler);
+PHP_RSHUTDOWN_FUNCTION(uprofiler);
+PHP_MINFO_FUNCTION(uprofiler);
 
-PHP_FUNCTION(xhprof_enable);
-PHP_FUNCTION(xhprof_disable);
-PHP_FUNCTION(xhprof_sample_enable);
-PHP_FUNCTION(xhprof_sample_disable);
+PHP_FUNCTION(uprofiler_enable);
+PHP_FUNCTION(uprofiler_disable);
+PHP_FUNCTION(uprofiler_sample_enable);
+PHP_FUNCTION(uprofiler_sample_disable);
 
 #endif	/* PHP_XHPROF_H */

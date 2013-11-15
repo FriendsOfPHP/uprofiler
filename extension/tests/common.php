@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Print xhprof raw data (essentially a callgraph) in a canonical style,
+ * Print uprofiler raw data (essentially a callgraph) in a canonical style,
  * so that even if the ordering of things within the raw_data (which is
  * an associative array) changes in future implementations the output
  * remains stable.
@@ -11,9 +11,9 @@
  *
  * @author Kannan
  */
-function print_canonical($xhprof_data) {
-  ksort($xhprof_data);
-  foreach($xhprof_data as $func => $metrics) {
+function print_canonical($uprofiler_data) {
+  ksort($uprofiler_data);
+  foreach($uprofiler_data as $func => $metrics) {
     echo str_pad($func, 40) . ":";
     ksort($metrics);
     foreach ($metrics as $name => $value) {

@@ -62,7 +62,7 @@ p.blue  {
   background-color:#C3D9FF
 }
 
-ul.xhprof_actions {
+ul.uprofiler_actions {
   float: right;
   padding-left: 16px;
   list-style-image: none;
@@ -71,11 +71,11 @@ ul.xhprof_actions {
   position:relative;
 }
 
-ul.xhprof_actions li {
+ul.uprofiler_actions li {
   border-bottom:1px solid #D8DFEA;
 }
 
-ul.xhprof_actions li a:hover {
+ul.uprofiler_actions li a:hover {
   background:#3B5998 none repeat scroll 0 0;
   color:#FFFFFF;
 }

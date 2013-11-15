@@ -1,17 +1,17 @@
 {
-    "name": "facebook/xhprof",
+    "name": "friendsofphp/uprofiler",
     "type": "library",
-    "description": "XHProf: A Hierarchical Profiler for PHP",
+    "description": "uprofiler: A lightweight profiler for PHP",
     "keywords": ["profiling", "performance"],
-    "homepage": "http://pecl.php.net/package/xhprof",
+    "homepage": "http://github.com/FriendsOfPHP/uprofiler",
     "license": "Apache-2.0",
     "require": {
         "php": ">=5.2.0"
     },
     "autoload": {
         "files": [
-            "xhprof_lib/utils/xhprof_lib.php",
-            "xhprof_lib/utils/xhprof_runs.php"
+            "uprofiler_lib/utils/uprofiler_lib.php",
+            "uprofiler_lib/utils/uprofiler_runs.php"
         ]
     }
 }
