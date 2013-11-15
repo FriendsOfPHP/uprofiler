@@ -1,0 +1,8 @@
+
+ARG_ENABLE("uprofiler", "whether to enable uprofiler support", "no");
+
+if (PHP_UPROFILER == "yes") {
+	EXTENSION("uprofiler", "uprofiler.c");
+	ADD_SOURCES(configure_module_dirname + "/win32", "php_uprofiler_win32.c");
+	AC_DEFINE('HAVE_UPROFILER', 1, 'Have uprofiler support');
+}
