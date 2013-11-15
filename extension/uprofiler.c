@@ -28,11 +28,18 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "php_uprofiler.h"
-#include "zend_extensions.h"
-#include <sys/time.h>
-#include <sys/resource.h>
+#include "Zend/zend_extensions.h"
+#ifdef PHP_WIN32
+# include "win32/time.h"
+# include "win32/unistd.h"
+#else
+# include <sys/time.h>
+# include <sys/resource.h>
+# include <unistd.h>
+#endif
+
 #include <stdlib.h>
-#include <unistd.h>
+
 #ifdef __FreeBSD__
 # if __FreeBSD_version >= 700110
 #   include <sys/resource.h>
@@ -60,6 +67,16 @@
 #   define SET_AFFINITY(pid, size, mask)       \
         thread_policy_set(mach_thread_self(), THREAD_AFFINITY_POLICY, mask, \
                           THREAD_AFFINITY_POLICY_COUNT)
+#elif PHP_WIN32
+/*
+ * Patch for compiling in Win32/64
+ * @author Benjamin Carl <opensource@clickalicious.de>
+ */
+#    define CPU_SET(cpu_id, new_mask) (*(new_mask)) = (cpu_id + 1)
+#    define CPU_ZERO(new_mask) (*(new_mask)) = 0
+#    define SET_AFFINITY(pid, size, mask) SetProcessAffinityMask(GetCurrentProcess(), (DWORD_PTR)mask)
+#    define GET_AFFINITY(pid, size, mask) \
+                      GetProcessAffinityMask(GetCurrentProcess(), mask, &s_mask)
 #else
 /* For sched_getaffinity, sched_setaffinity */
 # include <sched.h>
@@ -235,10 +252,10 @@ static hp_global_t       hp_globals;
 
 #if PHP_VERSION_ID < 50500
 /* Pointer to the original execute function */
-static ZEND_DLEXPORT void (*_zend_execute) (zend_op_array *ops TSRMLS_DC);
+ZEND_DLEXPORT void (*_zend_execute) (zend_op_array *ops TSRMLS_DC);
 
 /* Pointer to the origianl execute_internal function */
-static ZEND_DLEXPORT void (*_zend_execute_internal) (zend_execute_data *data,
+ZEND_DLEXPORT void (*_zend_execute_internal) (zend_execute_data *data,
                            int ret TSRMLS_DC);
 #else
 /* Pointer to the original execute function */
@@ -443,13 +460,19 @@ PHP_FUNCTION(uprofiler_sample_disable) {
  */
 PHP_MINIT_FUNCTION(uprofiler) {
   int i;
+  unsigned long s_mask;
 
   REGISTER_INI_ENTRIES();
 
   hp_register_constants(INIT_FUNC_ARGS_PASSTHRU);
 
   /* Get the number of available logical CPUs. */
+#ifndef PHP_WIN32
   hp_globals.cpu_num = sysconf(_SC_NPROCESSORS_CONF);
+#else
+  GetSystemInfo(&sysinfo);
+  hp_globals.cpu_num = sysinfo.dwNumberOfProcessors;
+#endif
 
   /* Get the cpu affinity mask. */
 #ifndef __APPLE__
@@ -520,14 +543,21 @@ PHP_MINFO_FUNCTION(uprofiler)
 {
   char buf[SCRATCH_BUF_LEN];
   char tmp[SCRATCH_BUF_LEN];
-  int i;
+  /* Note(bcarl): changed to uint32 like defined in struct -> hp_global_t */
+  uint32 i;
+
   int len;
 
   php_info_print_table_start();
+  php_info_print_table_row(2, "uprofiler", "enabled");
   php_info_print_table_header(2, "uprofiler", XHPROF_VERSION);
   len = snprintf(buf, SCRATCH_BUF_LEN, "%d", hp_globals.cpu_num);
   buf[len] = 0;
-  php_info_print_table_header(2, "CPU num", buf);
+  php_info_print_table_row(2, "CPU num", buf);
+  /* information about the cpu the process is bound to */
+  len = snprintf(tmp, SCRATCH_BUF_LEN, "%d", hp_globals.cur_cpu_id);
+  tmp[len] = 0;
+  php_info_print_table_row(2, "process bound to CPU", tmp);
 
   if (hp_globals.cpu_frequencies) {
     /* Print available cpu frequencies here. */
@@ -535,7 +565,7 @@ PHP_MINFO_FUNCTION(uprofiler)
     for (i = 0; i < hp_globals.cpu_num; ++i) {
       len = snprintf(buf, SCRATCH_BUF_LEN, " CPU %d ", i);
       buf[len] = 0;
-      len = snprintf(tmp, SCRATCH_BUF_LEN, "%f", hp_globals.cpu_frequencies[i]);
+      len = snprintf(tmp, SCRATCH_BUF_LEN, "%-.0f", hp_globals.cpu_frequencies[i]);
       tmp[len] = 0;
       php_info_print_table_row(2, buf, tmp);
     }
@@ -1135,9 +1165,9 @@ void hp_trunc_time(struct timeval *tv,
   time_in_micro /= intr;
   time_in_micro *= intr;
 
-  /* Update tv */
-  tv->tv_sec  = (time_in_micro / 1000000);
-  tv->tv_usec = (time_in_micro % 1000000);
+  /* Update tv Note(bcarl): added explicit typecasting (long) warning C4244 */
+  tv->tv_sec  = (long)(time_in_micro / 1000000);
+  tv->tv_usec = (long)(time_in_micro % 1000000);
 }
 
 /**
@@ -1219,11 +1249,26 @@ void hp_sample_check(hp_entry_t **entries  TSRMLS_DC) {
  * @author cjiang
  */
 inline uint64 cycle_timer() {
+#if defined(PHP_WIN32) && defined(_WIN64)
+  return __rdtsc();
+#else
   uint32 __a,__d;
   uint64 val;
+
+# ifdef PHP_WIN32
+  __asm {
+    cpuid
+    rdtsc
+    mov __a, eax
+    mov __d, edx
+  }
+# else
   asm volatile("rdtsc" : "=a" (__a), "=d" (__d));
+# endif
+
   (val) = ((uint64)__a) | (((uint64)__d)<<32);
   return val;
+#endif
 }
 
 /**
@@ -1266,8 +1311,8 @@ static long get_us_interval(struct timeval *start, struct timeval *end) {
  */
 static void incr_us_interval(struct timeval *start, uint64 incr) {
   incr += (start->tv_sec * 1000000 + start->tv_usec);
-  start->tv_sec  = incr/1000000;
-  start->tv_usec = incr%1000000;
+  start->tv_sec  = (long)(incr/1000000);
+  start->tv_usec = (long)(incr%1000000);
   return;
 }
 
@@ -1307,20 +1352,26 @@ inline uint64 get_tsc_from_us(uint64 usecs, double cpu_frequency) {
 static double get_cpu_frequency() {
   struct timeval start;
   struct timeval end;
+  uint64 tsc_start;
+  uint64 tsc_end;
 
   if (gettimeofday(&start, 0)) {
     perror("gettimeofday");
     return 0.0;
   }
-  uint64 tsc_start = cycle_timer();
-  /* Sleep for 5 miliseconds. Comparaing with gettimeofday's  few microseconds
+  
+  tsc_start = cycle_timer();
+
+  /* Sleep for 5 miliseconds. Comparaing with gettimeofday's few microseconds
    * execution time, this should be enough. */
   usleep(5000);
   if (gettimeofday(&end, 0)) {
     perror("gettimeofday");
     return 0.0;
   }
-  uint64 tsc_end = cycle_timer();
+  
+  tsc_end = cycle_timer();
+
   return (tsc_end - tsc_start) * 1.0 / (get_us_interval(&start, &end));
 }
 
@@ -1330,7 +1381,7 @@ static double get_cpu_frequency() {
  * @author cjiang
  */
 static void get_all_cpu_frequencies() {
-  int id;
+  uint32 id;
   double frequency;
 
   hp_globals.cpu_frequencies = malloc(sizeof(double) * hp_globals.cpu_num);
@@ -1566,7 +1617,7 @@ zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
   /* Bump stats in the counts hashtable */
   hp_inc_count(counts, "ct", 1  TSRMLS_CC);
 
-  hp_inc_count(counts, "wt", get_us_from_tsc(tsc_end - top->tsc_start,
+  hp_inc_count(counts, "wt", (long)get_us_from_tsc(tsc_end - top->tsc_start,
         hp_globals.cpu_frequencies[hp_globals.cur_cpu_id]) TSRMLS_CC);
   return counts;
 }
@@ -1904,7 +1955,7 @@ static void hp_stop(TSRMLS_D) {
   zend_compile_file     = _zend_compile_file;
   zend_compile_string   = _zend_compile_string;
 
-  /* Resore cpu affinity. */
+  /* Restore cpu affinity. */
   restore_cpu_affinity(&hp_globals.prev_mask);
 
   /* Stop profiling */

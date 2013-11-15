@@ -23,6 +23,8 @@ extern zend_module_entry uprofiler_module_entry;
 
 #ifdef PHP_WIN32
 #define PHP_XHPROF_API __declspec(dllexport)
+#include "win32/php_uprofiler_win32.h"
+#include "win32/php_uprofiler_win32.c"
 #else
 #define PHP_XHPROF_API
 #endif
