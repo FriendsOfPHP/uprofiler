@@ -1,0 +1,16 @@
+language: php
+php:
+  - "5.5"
+  - "5.4"
+  - "5.3"
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -qq valgrind
+  - cd extension
+  - phpize
+  - ./configure --enable-uprofiler --quiet
+  - make install
+  - echo "extension=uprofiler.so" >> `php --ini | grep "Loaded Configuration" | sed -e "s|.*:\s*||"`
+script:
+  - PHP=`which php`
+  - REPORT_EXIT_STATUS=1 TEST_PHP_EXECUTABLE=$PHP $PHP run-tests.php -q -m --show-diff
