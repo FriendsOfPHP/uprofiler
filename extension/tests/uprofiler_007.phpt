@@ -21,6 +21,8 @@ function foo($x) {
      $sum += bar();
   }
 
+  $x = @(string) $x;
+
   echo "hello: {$x}\n" ;
   return strlen("hello: {$x}");
 }
@@ -31,6 +33,8 @@ function foo_array($x1, $x2 = 'test') {
   foreach ($x as $idx) {
      $sum += bar();
   }
+
+  $x[0] = @(string) $x[0];
 
   echo "hello: " . $x[0] . $x[1] . "\n";
   return strlen("hello: {$x[0]} {$x[1]}");
