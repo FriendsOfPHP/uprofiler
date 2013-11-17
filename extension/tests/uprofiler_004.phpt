@@ -35,7 +35,7 @@ print_canonical($output);
 echo "\n";
 
 ?>
---EXPECT--
+--EXPECTF--
 abc,def,ghi
 I am in foo()...
 11
@@ -43,15 +43,15 @@ I am in bar()...
 Test for 'include_once' & 'require_once' operation
 main()                                  : ct=       1; wt=*;
 main()==>dirname                        : ct=       6; wt=*;
-main()==>load::tests/uprofiler_004_inc.php: ct=       1; wt=*;
-main()==>load::tests/uprofiler_004_require.php: ct=       1; wt=*;
-main()==>run_init::tests/uprofiler_004_inc.php: ct=       1; wt=*;
-main()==>run_init::tests/uprofiler_004_require.php: ct=       1; wt=*;
+main()==>load::%Stests%euprofiler_004_inc.php: ct=       1; wt=*;
+main()==>load::%Stests%euprofiler_004_require.php: ct=       1; wt=*;
+main()==>run_init::%Stests%euprofiler_004_inc.php: ct=       1; wt=*;
+main()==>run_init::%Stests%euprofiler_004_require.php: ct=       1; wt=*;
 main()==>uprofiler_disable              : ct=       1; wt=*;
-run_init::tests/uprofiler_004_inc.php==>explode: ct=       1; wt=*;
-run_init::tests/uprofiler_004_inc.php==>foo: ct=       1; wt=*;
-run_init::tests/uprofiler_004_inc.php==>implode: ct=       1; wt=*;
-run_init::tests/uprofiler_004_require.php==>bar: ct=       1; wt=*;
-run_init::tests/uprofiler_004_require.php==>explode: ct=       1; wt=*;
-run_init::tests/uprofiler_004_require.php==>implode: ct=       1; wt=*;
-run_init::tests/uprofiler_004_require.php==>strlen: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.php==>explode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.php==>foo: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.php==>implode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.php==>bar: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.php==>explode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.php==>implode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.php==>strlen: ct=       1; wt=*;

@@ -992,6 +992,7 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
        * include, eval, etc.
        */
 #if ZEND_EXTENSION_API_NO >= 220100525
+      data = data->prev_execute_data;
       curr_op = data->opline->extended_value;
 #else
       curr_op = data->opline->op2.u.constant.value.lval;
