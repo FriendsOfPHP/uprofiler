@@ -92,9 +92,6 @@
  * **********************
  */
 
-/* XHProf version                           */
-#define XHPROF_VERSION       "0.9.2"
-
 /* Fictitious function name to represent top of the call tree. The paranthesis
  * in the name is to ensure we don't conflict with user function names.  */
 #define ROOT_SYMBOL                "main()"
@@ -361,7 +358,7 @@ zend_module_entry uprofiler_module_entry = {
   PHP_RSHUTDOWN(uprofiler),           /* Request shutdown callback */
   PHP_MINFO(uprofiler),               /* Module info callback */
 #if ZEND_MODULE_API_NO >= 20010901
-  XHPROF_VERSION,
+  PHP_UPROFILER_VERSION,
 #endif
   STANDARD_MODULE_PROPERTIES
 };
@@ -550,7 +547,7 @@ PHP_MINFO_FUNCTION(uprofiler)
 
   php_info_print_table_start();
   php_info_print_table_row(2, "uprofiler", "enabled");
-  php_info_print_table_header(2, "uprofiler", XHPROF_VERSION);
+  php_info_print_table_header(2, "uprofiler", PHP_UPROFILER_VERSION);
   len = snprintf(buf, SCRATCH_BUF_LEN, "%d", hp_globals.cpu_num);
   buf[len] = 0;
   php_info_print_table_row(2, "CPU num", buf);
