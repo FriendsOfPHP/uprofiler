@@ -847,7 +847,7 @@ int  hp_ignore_entry_work(uint8 hash_code, char *curr_func) {
   return ignore;
 }
 
-inline int  hp_ignore_entry(uint8 hash_code, char *curr_func) {
+static inline int  hp_ignore_entry(uint8 hash_code, char *curr_func) {
   /* First check if ignoring functions is enabled */
   return hp_globals.ignored_function_names != NULL &&
          hp_ignore_entry_work(hash_code, curr_func);
@@ -1248,7 +1248,7 @@ void hp_sample_check(hp_entry_t **entries  TSRMLS_DC) {
  * @return 64 bit unsigned integer
  * @author cjiang
  */
-inline uint64 cycle_timer() {
+static inline uint64 cycle_timer() {
 #if defined(PHP_WIN32) && defined(_WIN64)
   return __rdtsc();
 #else
@@ -1325,7 +1325,7 @@ static void incr_us_interval(struct timeval *start, uint64 incr) {
  *
  * @author cjiang
  */
-inline double get_us_from_tsc(uint64 count, double cpu_frequency) {
+static inline double get_us_from_tsc(uint64 count, double cpu_frequency) {
   return count / cpu_frequency;
 }
 
@@ -1338,7 +1338,7 @@ inline double get_us_from_tsc(uint64 count, double cpu_frequency) {
  *
  * @author veeve
  */
-inline uint64 get_tsc_from_us(uint64 usecs, double cpu_frequency) {
+static inline uint64 get_tsc_from_us(uint64 usecs, double cpu_frequency) {
   return (uint64) (usecs * cpu_frequency);
 }
 
