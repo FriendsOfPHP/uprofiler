@@ -102,7 +102,7 @@
 /* Various XHPROF modes. If you are adding a new mode, register the appropriate
  * callbacks in hp_begin() */
 #define XHPROF_MODE_HIERARCHICAL            1
-#define XHPROF_MODE_SAMPLED            620002      /* Rockfort's zip code */
+#define XHPROF_MODE_SAMPLED                 2
 
 /* Hierarchical profiling flags.
  *
@@ -182,16 +182,16 @@ typedef struct hp_global_t {
   /*       ----------   Global attributes:  -----------       */
 
   /* Indicates if uprofiler is currently enabled */
-  int              enabled;
+  char              enabled;
 
   /* Indicates if uprofiler was ever enabled during this request */
-  int              ever_enabled;
+  char              ever_enabled;
 
   /* Holds all the uprofiler statistics */
   zval            *stats_count;
 
   /* Indicates the current uprofiler mode or level */
-  int              profiler_level;
+  char              profiler_level;
 
   /* Top of the profile stack */
   hp_entry_t      *entries;
@@ -282,7 +282,7 @@ static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filen
  */
 static void hp_register_constants(INIT_FUNC_ARGS);
 
-static void hp_begin(long level, long uprofiler_flags TSRMLS_DC);
+static void hp_begin(char level, long uprofiler_flags TSRMLS_DC);
 static void hp_stop(TSRMLS_D);
 static void hp_end(TSRMLS_D);
 
@@ -429,9 +429,8 @@ PHP_FUNCTION(uprofiler_disable) {
  * @author cjiang
  */
 PHP_FUNCTION(uprofiler_sample_enable) {
-  long  uprofiler_flags = 0;                                    /* XHProf flags */
   hp_get_ignored_functions_from_arg(NULL);
-  hp_begin(XHPROF_MODE_SAMPLED, uprofiler_flags TSRMLS_CC);
+  hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */ TSRMLS_CC);
 }
 
 /**
@@ -456,7 +455,7 @@ PHP_FUNCTION(uprofiler_sample_disable) {
  * @author cjiang
  */
 PHP_MINIT_FUNCTION(uprofiler) {
-  int i;
+  unsigned short i;
   unsigned long s_mask;
 
   REGISTER_INI_ENTRIES();
@@ -540,29 +539,26 @@ PHP_MINFO_FUNCTION(uprofiler)
 {
   char buf[SCRATCH_BUF_LEN];
   char tmp[SCRATCH_BUF_LEN];
-  /* Note(bcarl): changed to uint32 like defined in struct -> hp_global_t */
-  uint32 i;
-
-  int len;
+  size_t i, len;
 
   php_info_print_table_start();
   php_info_print_table_row(2, "uprofiler", "enabled");
   php_info_print_table_header(2, "uprofiler", PHP_UPROFILER_VERSION);
-  len = snprintf(buf, SCRATCH_BUF_LEN, "%d", hp_globals.cpu_num);
+  len = (size_t)snprintf(buf, SCRATCH_BUF_LEN, "%d", hp_globals.cpu_num);
   buf[len] = 0;
   php_info_print_table_row(2, "CPU num", buf);
   /* information about the cpu the process is bound to */
-  len = snprintf(tmp, SCRATCH_BUF_LEN, "%d", hp_globals.cur_cpu_id);
+  len = (size_t)snprintf(tmp, SCRATCH_BUF_LEN, "%d", hp_globals.cur_cpu_id);
   tmp[len] = 0;
   php_info_print_table_row(2, "process bound to CPU", tmp);
 
   if (hp_globals.cpu_frequencies) {
     /* Print available cpu frequencies here. */
     php_info_print_table_header(2, "CPU logical id", " Clock Rate (MHz) ");
-    for (i = 0; i < hp_globals.cpu_num; ++i) {
-      len = snprintf(buf, SCRATCH_BUF_LEN, " CPU %d ", i);
+    for (i = 0; i < (size_t)hp_globals.cpu_num; ++i) {
+      len = (size_t)snprintf(buf, SCRATCH_BUF_LEN, " CPU %zd ", i);
       buf[len] = 0;
-      len = snprintf(tmp, SCRATCH_BUF_LEN, "%-.0f", hp_globals.cpu_frequencies[i]);
+      len = (size_t)snprintf(tmp, SCRATCH_BUF_LEN, "%-.0f", hp_globals.cpu_frequencies[i]);
       tmp[len] = 0;
       php_info_print_table_row(2, buf, tmp);
     }
@@ -650,7 +646,7 @@ static void hp_ignored_functions_filter_clear() {
  */
 static void hp_ignored_functions_filter_init() {
   if (hp_globals.ignored_function_names != NULL) {
-    int i = 0;
+    size_t i = 0;
     for(; hp_globals.ignored_function_names[i] != NULL; i++) {
       char *str  = hp_globals.ignored_function_names[i];
       uint8 hash = hp_inline_hash(str);
@@ -675,13 +671,13 @@ int hp_ignored_functions_filter_collision(uint8 hash) {
  *
  * @author kannan, veeve
  */
-void hp_init_profiler_state(int level TSRMLS_DC) {
+void hp_init_profiler_state(char level TSRMLS_DC) {
   /* Setup globals */
   if (!hp_globals.ever_enabled) {
     hp_globals.ever_enabled  = 1;
     hp_globals.entries = NULL;
   }
-  hp_globals.profiler_level  = (int) level;
+  hp_globals.profiler_level  = level;
 
   /* Init stats_count */
   if (hp_globals.stats_count) {
@@ -834,7 +830,7 @@ size_t hp_get_entry_name(hp_entry_t  *entry,
 int  hp_ignore_entry_work(uint8 hash_code, char *curr_func) {
   int ignore = 0;
   if (hp_ignored_functions_filter_collision(hash_code)) {
-    int i = 0;
+    size_t i = 0;
     for (; hp_globals.ignored_function_names[i] != NULL; i++) {
       char *name = hp_globals.ignored_function_names[i];
       if ( !strcmp(curr_func, name)) {
@@ -918,7 +914,7 @@ size_t hp_get_function_stack(hp_entry_t *entry,
  */
 static const char *hp_get_base_filename(const char *filename) {
   const char *ptr;
-  int   found = 0;
+  short   found = 0;
 
   if (!filename)
     return "";
@@ -947,9 +943,10 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
   zend_execute_data *data;
   const char        *func = NULL;
   const char        *cls = NULL;
+  zend_uint         cls_name_length;
   char              *ret = NULL;
-  int                len;
-  zend_function      *curr_func;
+  size_t            len;
+  zend_function     *curr_func = NULL;
 
   data = EG(current_execute_data);
 
@@ -970,13 +967,15 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
        */
       if (curr_func->common.scope) {
         cls = curr_func->common.scope->name;
+        cls_name_length = curr_func->common.scope->name_length;
       } else if (data->object) {
         cls = Z_OBJCE(*data->object)->name;
+        cls_name_length = Z_OBJCE(*data->object)->name_length;
       }
 
       if (cls) {
-        len = strlen(cls) + strlen(func) + 10;
-        ret = (char*)emalloc(len);
+        len = (size_t)cls_name_length + strlen(func) + sizeof("::");
+        ret = (char *)emalloc(len);
         snprintf(ret, len, "%s::%s", cls, func);
       } else {
         ret = estrdup(func);
@@ -988,10 +987,10 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
        * name to make the reports more useful. So rather than just "include"
        * you'll see something like "run_init::foo.php" in your reports.
        */
-      const char *filename;
-      int   len;
+      const char *filename = NULL;
+      size_t   len;
       filename = hp_get_base_filename((curr_func->op_array).filename);
-      len      = strlen("run_init") + strlen(filename) + 3;
+      len      = sizeof("run_init::") + strlen(filename);
       ret      = (char *)emalloc(len);
       snprintf(ret, len, "run_init::%s", filename);
     }
@@ -1811,7 +1810,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  * It replaces all the functions like zend_execute, zend_execute_internal,
  * etc that needs to be instrumented with their corresponding proxies.
  */
-static void hp_begin(long level, long uprofiler_flags TSRMLS_DC) {
+static void hp_begin(char level, long uprofiler_flags TSRMLS_DC) {
   if (!hp_globals.enabled) {
     int hp_profile_flag = 1;
 
