@@ -982,60 +982,18 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
         ret = estrdup(func);
       }
     } else {
-      long     curr_op;
-      int      add_filename = 0;
-
       /* we are dealing with a special directive/function like
        * include, eval, etc.
-       */
-#if ZEND_EXTENSION_API_NO >= 220121212
-      data = data->prev_execute_data;
-#endif
-#if ZEND_EXTENSION_API_NO >= 220100525
-      curr_op = data->opline->extended_value;
-#else
-      curr_op = data->opline->op2.u.constant.value.lval;
-#endif
-
-      switch (curr_op) {
-        case ZEND_EVAL:
-          func = "eval";
-          break;
-        case ZEND_INCLUDE:
-          func = "include";
-          add_filename = 1;
-          break;
-        case ZEND_REQUIRE:
-          func = "require";
-          add_filename = 1;
-          break;
-        case ZEND_INCLUDE_ONCE:
-          func = "include_once";
-          add_filename = 1;
-          break;
-        case ZEND_REQUIRE_ONCE:
-          func = "require_once";
-          add_filename = 1;
-          break;
-        default:
-          func = "???_op";
-          break;
-      }
-
-      /* For some operations, we'll add the filename as part of the function
+       * We'll add the filename as part of the function
        * name to make the reports more useful. So rather than just "include"
        * you'll see something like "run_init::foo.php" in your reports.
        */
-      if (add_filename){
-        const char *filename;
-        int   len;
-        filename = hp_get_base_filename((curr_func->op_array).filename);
-        len      = strlen("run_init") + strlen(filename) + 3;
-        ret      = (char *)emalloc(len);
-        snprintf(ret, len, "run_init::%s", filename);
-      } else {
-        ret = estrdup(func);
-      }
+      const char *filename;
+      int   len;
+      filename = hp_get_base_filename((curr_func->op_array).filename);
+      len      = strlen("run_init") + strlen(filename) + 3;
+      ret      = (char *)emalloc(len);
+      snprintf(ret, len, "run_init::%s", filename);
     }
   }
   return ret;
