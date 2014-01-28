@@ -156,8 +156,7 @@ PHP_FUNCTION(uprofiler_enable) {
   }
 
   if(hp_globals.enabled == 1) {
-	  php_error(E_WARNING, "uprofiler is already enabled, ignoring the enable statement");
-	  return;
+	  RETURN_FALSE;
   }
 
   if (uprofiler_flags < 0) {
@@ -165,6 +164,7 @@ PHP_FUNCTION(uprofiler_enable) {
 	  uprofiler_flags = 0;
   }
   hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC);
+  RETURN_TRUE;
 }
 
 /**
@@ -180,7 +180,6 @@ PHP_FUNCTION(uprofiler_disable) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
   }
-  php_error(E_NOTICE, "Attempting to disable a not-enabled uprofiler instance");
 }
 
 /**
@@ -191,10 +190,10 @@ PHP_FUNCTION(uprofiler_disable) {
  */
 PHP_FUNCTION(uprofiler_sample_enable) {
 	if(hp_globals.enabled == 1) {
-		php_error(E_WARNING, "uprofiler is already enabled, ignoring the enable statement");
-		return;
+		RETURN_FALSE;
 	}
 	hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */, NULL TSRMLS_CC);
+	RETURN_TRUE;
 }
 
 /**
@@ -210,7 +209,6 @@ PHP_FUNCTION(uprofiler_sample_disable) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
   }
-  php_error(E_NOTICE, "Attempting to disable a not-enabled uprofiler instance");
 }
 
 /**
