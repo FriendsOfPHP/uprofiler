@@ -974,12 +974,19 @@ static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
       }
 
       if (cls) {
-        len = (size_t)cls_name_length + strlen(func) + sizeof("::");
-        ret = (char *)emalloc(len);
-        snprintf(ret, len, "%s::%s", cls, func);
+        if (curr_func->common.fn_flags & ZEND_ACC_CLOSURE) {
+            spprintf(&ret, 0, "%s::{closure}/%d-%d", cls, curr_func->op_array.line_start, curr_func->op_array.line_end);
+        } else {
+            spprintf(&ret, 0, "%s::%s", cls, func);
+        }
       } else {
-        ret = estrdup(func);
+          if (curr_func->common.fn_flags & ZEND_ACC_CLOSURE) {
+              spprintf(&ret, 0, "{closure}::%s/%d-%d", curr_func->op_array.filename, curr_func->op_array.line_start, curr_func->op_array.line_end);
+          } else {
+              spprintf(&ret, 0, "%s", func);
+          }
       }
+
     } else {
       /* we are dealing with a special directive/function like
        * include, eval, etc.
