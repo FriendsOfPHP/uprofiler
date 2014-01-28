@@ -29,214 +29,6 @@
 #include "ext/standard/info.h"
 #include "php_uprofiler.h"
 #include "Zend/zend_extensions.h"
-#ifdef PHP_WIN32
-# include "win32/time.h"
-# include "win32/unistd.h"
-#else
-# include <sys/time.h>
-# include <sys/resource.h>
-# include <unistd.h>
-#endif
-
-#include <stdlib.h>
-
-#ifdef __FreeBSD__
-# if __FreeBSD_version >= 700110
-#   include <sys/resource.h>
-#   include <sys/cpuset.h>
-#   define cpu_set_t cpuset_t
-#   define SET_AFFINITY(pid, size, mask) \
-           cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_TID, -1, size, mask)
-#   define GET_AFFINITY(pid, size, mask) \
-           cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_TID, -1, size, mask)
-# else
-#   error "This version of FreeBSD does not support cpusets"
-# endif /* __FreeBSD_version */
-#elif __APPLE__
-/*
- * Patch for compiling in Mac OS X Leopard
- * @author Svilen Spasov <s.spasov@gmail.com>
- */
-#    include <mach/mach_init.h>
-#    include <mach/thread_policy.h>
-#    define cpu_set_t thread_affinity_policy_data_t
-#    define CPU_SET(cpu_id, new_mask) \
-        (*(new_mask)).affinity_tag = (cpu_id + 1)
-#    define CPU_ZERO(new_mask)                 \
-        (*(new_mask)).affinity_tag = THREAD_AFFINITY_TAG_NULL
-#   define SET_AFFINITY(pid, size, mask)       \
-        thread_policy_set(mach_thread_self(), THREAD_AFFINITY_POLICY, mask, \
-                          THREAD_AFFINITY_POLICY_COUNT)
-#elif PHP_WIN32
-/*
- * Patch for compiling in Win32/64
- * @author Benjamin Carl <opensource@clickalicious.de>
- */
-#    define CPU_SET(cpu_id, new_mask) (*(new_mask)) = (cpu_id + 1)
-#    define CPU_ZERO(new_mask) (*(new_mask)) = 0
-#    define SET_AFFINITY(pid, size, mask) SetProcessAffinityMask(GetCurrentProcess(), (DWORD_PTR)mask)
-#    define GET_AFFINITY(pid, size, mask) \
-                      GetProcessAffinityMask(GetCurrentProcess(), mask, &s_mask)
-#else
-/* For sched_getaffinity, sched_setaffinity */
-# include <sched.h>
-# define SET_AFFINITY(pid, size, mask) sched_setaffinity(0, size, mask)
-# define GET_AFFINITY(pid, size, mask) sched_getaffinity(0, size, mask)
-#endif /* __FreeBSD__ */
-
-
-
-/**
- * **********************
- * GLOBAL MACRO CONSTANTS
- * **********************
- */
-
-/* Fictitious function name to represent top of the call tree. The paranthesis
- * in the name is to ensure we don't conflict with user function names.  */
-#define ROOT_SYMBOL                "main()"
-
-/* Size of a temp scratch buffer            */
-#define SCRATCH_BUF_LEN            512
-
-/* Various XHPROF modes. If you are adding a new mode, register the appropriate
- * callbacks in hp_begin() */
-#define XHPROF_MODE_HIERARCHICAL            1
-#define XHPROF_MODE_SAMPLED                 2
-
-/* Hierarchical profiling flags.
- *
- * Note: Function call counts and wall (elapsed) time are always profiled.
- * The following optional flags can be used to control other aspects of
- * profiling.
- */
-#define XHPROF_FLAGS_NO_BUILTINS   0x0001         /* do not profile builtins */
-#define XHPROF_FLAGS_CPU           0x0002      /* gather CPU times for funcs */
-#define XHPROF_FLAGS_MEMORY        0x0004   /* gather memory usage for funcs */
-
-/* Constants for XHPROF_MODE_SAMPLED        */
-#define XHPROF_SAMPLING_INTERVAL       100000      /* In microsecs        */
-
-/* Constant for ignoring functions, transparent to hierarchical profile */
-#define XHPROF_MAX_IGNORED_FUNCTIONS  256
-#define XHPROF_IGNORED_FUNCTION_FILTER_SIZE                           \
-               ((XHPROF_MAX_IGNORED_FUNCTIONS + 7)/8)
-
-#if !defined(uint64)
-typedef unsigned long long uint64;
-#endif
-#if !defined(uint32)
-typedef unsigned int uint32;
-#endif
-#if !defined(uint8)
-typedef unsigned char uint8;
-#endif
-
-
-/**
- * *****************************
- * GLOBAL DATATYPES AND TYPEDEFS
- * *****************************
- */
-
-/* XHProf maintains a stack of entries being profiled. The memory for the entry
- * is passed by the layer that invokes BEGIN_PROFILING(), e.g. the hp_execute()
- * function. Often, this is just C-stack memory.
- *
- * This structure is a convenient place to track start time of a particular
- * profile operation, recursion depth, and the name of the function being
- * profiled. */
-typedef struct hp_entry_t {
-  char                   *name_hprof;                       /* function name */
-  int                     rlvl_hprof;        /* recursion level for function */
-  uint64                  tsc_start;         /* start value for TSC counter  */
-  long int                mu_start_hprof;                    /* memory usage */
-  long int                pmu_start_hprof;              /* peak memory usage */
-  struct rusage           ru_start_hprof;             /* user/sys time start */
-  struct hp_entry_t      *prev_hprof;    /* ptr to prev entry being profiled */
-  uint8                   hash_code;     /* hash_code for the function name  */
-} hp_entry_t;
-
-/* Various types for XHPROF callbacks       */
-typedef void (*hp_init_cb)           (TSRMLS_D);
-typedef void (*hp_exit_cb)           (TSRMLS_D);
-typedef void (*hp_begin_function_cb) (hp_entry_t **entries,
-                                      hp_entry_t *current   TSRMLS_DC);
-typedef void (*hp_end_function_cb)   (hp_entry_t **entries  TSRMLS_DC);
-
-/* Struct to hold the various callbacks for a single uprofiler mode */
-typedef struct hp_mode_cb {
-  hp_init_cb             init_cb;
-  hp_exit_cb             exit_cb;
-  hp_begin_function_cb   begin_fn_cb;
-  hp_end_function_cb     end_fn_cb;
-} hp_mode_cb;
-
-/* Xhprof's global state.
- *
- * This structure is instantiated once.  Initialize defaults for attributes in
- * hp_init_profiler_state() Cleanup/free attributes in
- * hp_clean_profiler_state() */
-typedef struct hp_global_t {
-
-  /*       ----------   Global attributes:  -----------       */
-
-  /* Indicates if uprofiler is currently enabled */
-  char              enabled;
-
-  /* Indicates if uprofiler was ever enabled during this request */
-  char              ever_enabled;
-
-  /* Holds all the uprofiler statistics */
-  zval            *stats_count;
-
-  /* Indicates the current uprofiler mode or level */
-  char              profiler_level;
-
-  /* Top of the profile stack */
-  hp_entry_t      *entries;
-
-  /* freelist of hp_entry_t chunks for reuse... */
-  hp_entry_t      *entry_free_list;
-
-  /* Callbacks for various uprofiler modes */
-  hp_mode_cb       mode_cb;
-
-  /*       ----------   Mode specific attributes:  -----------       */
-
-  /* Global to track the time of the last sample in time and ticks */
-  struct timeval   last_sample_time;
-  uint64           last_sample_tsc;
-  /* XHPROF_SAMPLING_INTERVAL in ticks */
-  uint64           sampling_interval_tsc;
-
-  /* This array is used to store cpu frequencies for all available logical
-   * cpus.  For now, we assume the cpu frequencies will not change for power
-   * saving or other reasons. If we need to worry about that in the future, we
-   * can use a periodical timer to re-calculate this arrary every once in a
-   * while (for example, every 1 or 5 seconds). */
-  double *cpu_frequencies;
-
-  /* The number of logical CPUs this machine has. */
-  uint32 cpu_num;
-
-  /* The saved cpu affinity. */
-  cpu_set_t prev_mask;
-
-  /* The cpu id current process is bound to. (default 0) */
-  uint32 cur_cpu_id;
-
-  /* XHProf flags */
-  uint32 uprofiler_flags;
-
-  /* counter table indexed by hash value of function names. */
-  uint8  func_hash_counters[256];
-
-  /* Table of ignored function names and their filter */
-  char  **ignored_function_names;
-  uint8   ignored_function_filter[XHPROF_IGNORED_FUNCTION_FILTER_SIZE];
-
-} hp_global_t;
 
 
 /**
@@ -275,37 +67,7 @@ static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filen
 #define INDEX_2_BIT(index)   (1 << (index & 0x7));
 
 
-/**
- * ****************************
- * STATIC FUNCTION DECLARATIONS
- * ****************************
- */
-static void hp_register_constants(INIT_FUNC_ARGS);
 
-static void hp_begin(char level, long uprofiler_flags TSRMLS_DC);
-static void hp_stop(TSRMLS_D);
-static void hp_end(TSRMLS_D);
-
-static inline uint64 cycle_timer();
-static double get_cpu_frequency();
-static void clear_frequencies();
-
-static void hp_free_the_free_list();
-static hp_entry_t *hp_fast_alloc_hprof_entry();
-static void hp_fast_free_hprof_entry(hp_entry_t *p);
-static inline uint8 hp_inline_hash(char * str);
-static void get_all_cpu_frequencies();
-static long get_us_interval(struct timeval *start, struct timeval *end);
-static void incr_us_interval(struct timeval *start, uint64 incr);
-
-static void hp_get_ignored_functions_from_arg(zval *args);
-static void hp_ignored_functions_filter_clear();
-static void hp_ignored_functions_filter_init();
-
-static inline zval  *hp_zval_at_key(char  *key,
-                                    zval  *values);
-static inline char **hp_strings_in_zval(zval  *values);
-static inline void   hp_array_del(char **name_array);
 
 /* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
@@ -322,14 +84,6 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_uprofiler_sample_disable, 0)
 ZEND_END_ARG_INFO()
 /* }}} */
-
-/**
- * *********************
- * FUNCTION PROTOTYPES
- * *********************
- */
-int restore_cpu_affinity(cpu_set_t * prev_mask);
-int bind_to_cpu(uint32 cpu_id);
 
 /**
  * *********************
@@ -401,9 +155,16 @@ PHP_FUNCTION(uprofiler_enable) {
     return;
   }
 
-  hp_get_ignored_functions_from_arg(optional_array);
+  if(hp_globals.enabled == 1) {
+	  php_error(E_WARNING, "uprofiler is already enabled, ignoring the enable statement");
+	  return;
+  }
 
-  hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags TSRMLS_CC);
+  if (uprofiler_flags < 0) {
+	  php_error(E_NOTICE, "Can't use negative values for $flags, assuming 0");
+	  uprofiler_flags = 0;
+  }
+  hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC);
 }
 
 /**
@@ -419,7 +180,7 @@ PHP_FUNCTION(uprofiler_disable) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
   }
-  /* else null is returned */
+  php_error(E_NOTICE, "Attempting to disable a not-enabled uprofiler instance");
 }
 
 /**
@@ -429,8 +190,11 @@ PHP_FUNCTION(uprofiler_disable) {
  * @author cjiang
  */
 PHP_FUNCTION(uprofiler_sample_enable) {
-  hp_get_ignored_functions_from_arg(NULL);
-  hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */ TSRMLS_CC);
+	if(hp_globals.enabled == 1) {
+		php_error(E_WARNING, "uprofiler is already enabled, ignoring the enable statement");
+		return;
+	}
+	hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */, NULL TSRMLS_CC);
 }
 
 /**
@@ -446,7 +210,7 @@ PHP_FUNCTION(uprofiler_sample_disable) {
     hp_stop(TSRMLS_C);
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
   }
-  /* else null is returned */
+  php_error(E_NOTICE, "Attempting to disable a not-enabled uprofiler instance");
 }
 
 /**
@@ -619,13 +383,19 @@ static inline uint8 hp_inline_hash(char * str) {
  * @author mpal
  */
 static void hp_get_ignored_functions_from_arg(zval *args) {
-  if (args != NULL) {
-    zval  *zresult = NULL;
-
-    zresult = hp_zval_at_key("ignored_functions", args);
-    hp_globals.ignored_function_names = hp_strings_in_zval(zresult);
+  if (args) {
+    zval **zresult = NULL;
+    if (Z_TYPE_P(args) == IS_ARRAY) {
+    	if (zend_hash_find(Z_ARRVAL_P(args), "ignored_functions", sizeof("ignored_functions"), (void**)&zresult) == FAILURE) {
+    		goto nullify_functions_names;
+    	}
+    	hp_globals.ignored_function_names = hp_strings_in_zval(*zresult);
+    } else {
+    	goto nullify_functions_names;
+    }
   } else {
-    hp_globals.ignored_function_names = NULL;
+nullify_functions_names:
+	  hp_globals.ignored_function_names = NULL;
   }
 }
 
@@ -725,8 +495,7 @@ void hp_clean_profiler_state(TSRMLS_D) {
   hp_globals.ever_enabled = 0;
 
   /* Delete the array storing ignored function names */
-  hp_array_del(hp_globals.ignored_function_names);
-  hp_globals.ignored_function_names = NULL;
+  CLEAR_IGNORED_FUNC_NAMES;
 }
 
 /*
@@ -1817,12 +1586,14 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  * It replaces all the functions like zend_execute, zend_execute_internal,
  * etc that needs to be instrumented with their corresponding proxies.
  */
-static void hp_begin(char level, long uprofiler_flags TSRMLS_DC) {
+static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC) {
   if (!hp_globals.enabled) {
+	hp_get_ignored_functions_from_arg(options);
+
     int hp_profile_flag = 1;
 
     hp_globals.enabled      = 1;
-    hp_globals.uprofiler_flags = (uint32)uprofiler_flags;
+    hp_globals.uprofiler_flags = uprofiler_flags;
 
     /* Replace zend_compile with our proxy */
     _zend_compile_file = zend_compile_file;
@@ -1922,6 +1693,8 @@ static void hp_stop(TSRMLS_D) {
   /* Restore cpu affinity. */
   restore_cpu_affinity(&hp_globals.prev_mask);
 
+  CLEAR_IGNORED_FUNC_NAMES
+
   /* Stop profiling */
   hp_globals.enabled = 0;
 }
@@ -1932,31 +1705,6 @@ static void hp_stop(TSRMLS_D) {
  * XHPROF ZVAL UTILITY FUNCTIONS
  * *****************************
  */
-
-/** Look in the PHP assoc array to find a key and return the zval associated
- *  with it.
- *
- *  @author mpal
- **/
-static zval *hp_zval_at_key(char  *key,
-                            zval  *values) {
-  zval *result = NULL;
-
-  if (values->type == IS_ARRAY) {
-    HashTable *ht;
-    zval     **value;
-    uint       len = strlen(key) + 1;
-
-    ht = Z_ARRVAL_P(values);
-    if (zend_hash_find(ht, key, len, (void**)&value) == SUCCESS) {
-      result = *value;
-    }
-  } else {
-    result = NULL;
-  }
-
-  return result;
-}
 
 /** Convert the PHP array of strings to an emalloced array of strings. Note,
  *  this method duplicates the string data in the PHP array.
@@ -2024,7 +1772,7 @@ static char **hp_strings_in_zval(zval  *values) {
 /* Free this memory at the end of profiling */
 static inline void hp_array_del(char **name_array) {
   if (name_array != NULL) {
-    int i = 0;
+    size_t i = 0;
     for(; name_array[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
       efree(name_array[i]);
     }
