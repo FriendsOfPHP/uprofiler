@@ -4,3 +4,6 @@ CHANGELOG
 0.1 (2013-XX-XX)
 
  * always report non-function calls as run_init::*/*
+ * add closure information to distinguish them (filename, lines)
+ * fix leak when calling enable() multiple times
+ * enable() and disable() now return TRUE or FALSE on success/failure
