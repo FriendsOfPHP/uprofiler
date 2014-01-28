@@ -253,8 +253,8 @@ typedef struct hp_global_t {
  * FUNCTION PROTOTYPES
  * *********************
  */
-int restore_cpu_affinity(cpu_set_t * prev_mask);
-int bind_to_cpu(uint32 cpu_id);
+static int restore_cpu_affinity(cpu_set_t * prev_mask);
+static int bind_to_cpu(uint32 cpu_id);
 
 /**
  * ****************************
@@ -285,6 +285,41 @@ static void hp_ignored_functions_filter_init();
 
 static inline char **hp_strings_in_zval(zval  *values);
 static inline void   hp_array_del(char **name_array);
+
+/**
+ * ***********************
+ * GLOBAL STATIC VARIABLES
+ * ***********************
+ */
+/* XHProf global state */
+static hp_global_t       hp_globals;
+
+#if PHP_VERSION_ID < 50500
+/* Pointer to the original execute function */
+ZEND_DLEXPORT void (*_zend_execute) (zend_op_array *ops TSRMLS_DC);
+
+/* Pointer to the origianl execute_internal function */
+ZEND_DLEXPORT void (*_zend_execute_internal) (zend_execute_data *data,
+                           int ret TSRMLS_DC);
+#else
+/* Pointer to the original execute function */
+static void (*_zend_execute_ex) (zend_execute_data *execute_data TSRMLS_DC);
+
+/* Pointer to the origianl execute_internal function */
+static void (*_zend_execute_internal) (zend_execute_data *data,
+                      struct _zend_fcall_info *fci, int ret TSRMLS_DC);
+#endif
+
+/* Pointer to the original compile function */
+static zend_op_array * (*_zend_compile_file) (zend_file_handle *file_handle,
+                                              int type TSRMLS_DC);
+
+/* Pointer to the original compile string function (used by eval) */
+static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filename TSRMLS_DC);
+
+/* Bloom filter for function names to be ignored */
+#define INDEX_2_BYTE(index)  (index >> 3)
+#define INDEX_2_BIT(index)   (1 << (index & 0x7));
 
 PHP_MINIT_FUNCTION(uprofiler);
 PHP_MSHUTDOWN_FUNCTION(uprofiler);

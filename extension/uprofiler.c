@@ -31,40 +31,7 @@
 #include "Zend/zend_extensions.h"
 
 
-/**
- * ***********************
- * GLOBAL STATIC VARIABLES
- * ***********************
- */
-/* XHProf global state */
-static hp_global_t       hp_globals;
 
-#if PHP_VERSION_ID < 50500
-/* Pointer to the original execute function */
-ZEND_DLEXPORT void (*_zend_execute) (zend_op_array *ops TSRMLS_DC);
-
-/* Pointer to the origianl execute_internal function */
-ZEND_DLEXPORT void (*_zend_execute_internal) (zend_execute_data *data,
-                           int ret TSRMLS_DC);
-#else
-/* Pointer to the original execute function */
-static void (*_zend_execute_ex) (zend_execute_data *execute_data TSRMLS_DC);
-
-/* Pointer to the origianl execute_internal function */
-static void (*_zend_execute_internal) (zend_execute_data *data,
-                      struct _zend_fcall_info *fci, int ret TSRMLS_DC);
-#endif
-
-/* Pointer to the original compile function */
-static zend_op_array * (*_zend_compile_file) (zend_file_handle *file_handle,
-                                              int type TSRMLS_DC);
-
-/* Pointer to the original compile string function (used by eval) */
-static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filename TSRMLS_DC);
-
-/* Bloom filter for function names to be ignored */
-#define INDEX_2_BYTE(index)  (index >> 3)
-#define INDEX_2_BIT(index)   (1 << (index & 0x7));
 
 
 
@@ -96,7 +63,7 @@ zend_function_entry uprofiler_functions[] = {
   PHP_FE(uprofiler_disable, arginfo_uprofiler_disable)
   PHP_FE(uprofiler_sample_enable, arginfo_uprofiler_sample_enable)
   PHP_FE(uprofiler_sample_disable, arginfo_uprofiler_sample_disable)
-  {NULL, NULL, NULL}
+  PHP_FE_END
 };
 
 /* Callback functions for the uprofiler extension */
@@ -832,7 +799,7 @@ static void hp_fast_free_hprof_entry(hp_entry_t *p) {
  * @return void
  * @author kannan
  */
-void hp_inc_count(zval *counts, char *name, long count TSRMLS_DC) {
+static void hp_inc_count(zval *counts, char *name, long count TSRMLS_DC) {
   HashTable *ht;
   void *data;
 
@@ -853,7 +820,7 @@ void hp_inc_count(zval *counts, char *name, long count TSRMLS_DC) {
  *
  * @author kannan, veeve
  */
-zval * hp_hash_lookup(char *symbol  TSRMLS_DC) {
+static zval * hp_hash_lookup(char *symbol  TSRMLS_DC) {
   HashTable   *ht;
   void        *data;
   zval        *counts = (zval *) 0;
@@ -887,7 +854,7 @@ zval * hp_hash_lookup(char *symbol  TSRMLS_DC) {
  * @return void
  * @author veeve
  */
-void hp_trunc_time(struct timeval *tv,
+static void hp_trunc_time(struct timeval *tv,
                    uint64          intr) {
   uint64 time_in_micro;
 
@@ -909,7 +876,7 @@ void hp_trunc_time(struct timeval *tv,
  * @return void
  * @author veeve
  */
-void hp_sample_stack(hp_entry_t  **entries  TSRMLS_DC) {
+static void hp_sample_stack(hp_entry_t  **entries  TSRMLS_DC) {
   char key[SCRATCH_BUF_LEN];
   char symbol[SCRATCH_BUF_LEN * 1000];
 
@@ -942,7 +909,7 @@ void hp_sample_stack(hp_entry_t  **entries  TSRMLS_DC) {
  * @return void
  * @author veeve
  */
-void hp_sample_check(hp_entry_t **entries  TSRMLS_DC) {
+static void hp_sample_check(hp_entry_t **entries  TSRMLS_DC) {
   /* Validate input */
   if (!entries || !(*entries)) {
     return;
@@ -1012,7 +979,7 @@ static inline uint64 cycle_timer() {
  *
  * @author cjiang
  */
-int bind_to_cpu(uint32 cpu_id) {
+static int bind_to_cpu(uint32 cpu_id) {
   cpu_set_t new_mask;
 
   CPU_ZERO(&new_mask);
@@ -1150,7 +1117,7 @@ static void get_all_cpu_frequencies() {
  *
  * @author cjiang
  */
-int restore_cpu_affinity(cpu_set_t * prev_mask) {
+static int restore_cpu_affinity(cpu_set_t * prev_mask) {
   if (SET_AFFINITY(0, sizeof(cpu_set_t), prev_mask) < 0) {
     perror("restore setaffinity");
     return -1;
@@ -1179,16 +1146,16 @@ static void clear_frequencies() {
  * XHPROF DUMMY CALLBACKS
  * ***************************
  */
-void hp_mode_dummy_init_cb(TSRMLS_D) { }
+static void hp_mode_dummy_init_cb(TSRMLS_D) { }
 
 
-void hp_mode_dummy_exit_cb(TSRMLS_D) { }
+static void hp_mode_dummy_exit_cb(TSRMLS_D) { }
 
 
-void hp_mode_dummy_beginfn_cb(hp_entry_t **entries,
+static void hp_mode_dummy_beginfn_cb(hp_entry_t **entries,
                               hp_entry_t *current  TSRMLS_DC) { }
 
-void hp_mode_dummy_endfn_cb(hp_entry_t **entries   TSRMLS_DC) { }
+static void hp_mode_dummy_endfn_cb(hp_entry_t **entries   TSRMLS_DC) { }
 
 
 /**
@@ -1207,7 +1174,7 @@ void hp_mode_dummy_endfn_cb(hp_entry_t **entries   TSRMLS_DC) { }
  * @return void
  * @author kannan, veeve
  */
-void hp_mode_common_beginfn(hp_entry_t **entries,
+static void hp_mode_common_beginfn(hp_entry_t **entries,
                             hp_entry_t  *current  TSRMLS_DC) {
   hp_entry_t   *p;
 
@@ -1237,7 +1204,7 @@ void hp_mode_common_beginfn(hp_entry_t **entries,
  * @return void
  * @author kannan, veeve
  */
-void hp_mode_common_endfn(hp_entry_t **entries, hp_entry_t *current TSRMLS_DC) {
+static void hp_mode_common_endfn(hp_entry_t **entries, hp_entry_t *current TSRMLS_DC) {
   hp_globals.func_hash_counters[current->hash_code]--;
 }
 
@@ -1252,7 +1219,7 @@ void hp_mode_common_endfn(hp_entry_t **entries, hp_entry_t *current TSRMLS_DC) {
  *
  * @author veeve
  */
-void hp_mode_sampled_init_cb(TSRMLS_D) {
+static void hp_mode_sampled_init_cb(TSRMLS_D) {
   struct timeval  now;
   uint64 truncated_us;
   uint64 truncated_tsc;
@@ -1291,7 +1258,7 @@ void hp_mode_sampled_init_cb(TSRMLS_D) {
  *
  * @author kannan
  */
-void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
+static void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
                              hp_entry_t  *current  TSRMLS_DC) {
   /* Get start tsc counter */
   current->tsc_start = cycle_timer();
@@ -1314,7 +1281,7 @@ void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
  *
  * @author veeve
  */
-void hp_mode_sampled_beginfn_cb(hp_entry_t **entries,
+static void hp_mode_sampled_beginfn_cb(hp_entry_t **entries,
                                 hp_entry_t  *current  TSRMLS_DC) {
   /* See if its time to take a sample */
   hp_sample_check(entries  TSRMLS_CC);
@@ -1332,7 +1299,7 @@ void hp_mode_sampled_beginfn_cb(hp_entry_t **entries,
  *
  * @author kannan
  */
-zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
+static zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
                                char          *symbol  TSRMLS_DC) {
   zval    *counts;
   uint64   tsc_end;
@@ -1358,7 +1325,7 @@ zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
  *
  * @author kannan
  */
-void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
+static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
   hp_entry_t   *top = (*entries);
   zval            *counts;
   struct rusage    ru_end;
@@ -1401,7 +1368,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
  *
  * @author veeve
  */
-void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
+static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
   /* See if its time to take a sample */
   hp_sample_check(entries  TSRMLS_CC);
 }
