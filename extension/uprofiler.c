@@ -1433,6 +1433,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
 ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
                                        struct _zend_fcall_info *fci, int ret TSRMLS_DC) {
 #endif
+
   zend_execute_data *current_data;
   char             *func = NULL;
   int    hp_profile_flag = 1;
@@ -1444,10 +1445,10 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
     BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
   }
 
-  if (!_zend_execute_internal) {
-    /* no old override to begin with. so invoke the builtin's implementation  */
-    zend_op *opline = EX(opline);
-#if ZEND_EXTENSION_API_NO >= 220100525
+  if (!_zend_execute_internal) { /* no old override to begin with. so invoke the builtin's implementation  */
+
+#if IS_PHP_54
+	zend_op *opline = EX(opline);
     temp_variable *retvar = &EX_T(opline->result.var);
     ((zend_internal_function *) EX(function_state).function)->handler(
                        opline->extended_value,
@@ -1455,6 +1456,8 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
                        (EX(function_state).function->common.fn_flags & ZEND_ACC_RETURN_REFERENCE) ?
                        &retvar->var.ptr:NULL,
                        EX(object), ret TSRMLS_CC);
+#elif IS_AT_LEAST_PHP_55
+    execute_internal(execute_data, fci, ret TSRMLS_CC);
 #else
     ((zend_internal_function *) EX(function_state).function)->handler(
                        opline->extended_value,
@@ -1463,12 +1466,13 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
                        &EX_T(opline->result.u.var).var.ptr:NULL,
                        EX(object), ret TSRMLS_CC);
 #endif
+
   } else {
     /* call the old override */
-#if PHP_VERSION_ID < 50500
-    _zend_execute_internal(execute_data, ret TSRMLS_CC);
+#if IS_AT_LEAST_PHP_55
+	_zend_execute_internal(execute_data, fci, ret TSRMLS_CC);
 #else
-    _zend_execute_internal(execute_data, fci, ret TSRMLS_CC);
+	_zend_execute_internal(execute_data, ret TSRMLS_CC);
 #endif
   }
 
