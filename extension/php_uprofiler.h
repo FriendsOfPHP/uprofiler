@@ -18,7 +18,7 @@
 #ifndef PHP_XHPROF_H
 #define PHP_XHPROF_H
 
-#define	PHP_UPROFILER_VERSION "0.9.2"
+#define	PHP_UPROFILER_VERSION "0.10"
 
 extern zend_module_entry uprofiler_module_entry;
 #define phpext_uprofiler_ptr &uprofiler_module_entry

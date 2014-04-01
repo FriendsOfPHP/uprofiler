@@ -1,7 +1,11 @@
 CHANGELOG
 =========
 
-0.1 (2013-XX-XX)
+0.10 (2014-XX-XX)
+
+ * Add support for PHP 5.5
+
+0.10 (2013-XX-XX)
 
  * always report non-function calls as run_init::*/*
  * add closure information to distinguish them (filename, lines)
