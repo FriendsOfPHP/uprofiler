@@ -107,6 +107,7 @@ extern zend_module_entry uprofiler_module_entry;
 #define PHP_5_4_X_API_NO		220100525
 #define PHP_5_5_X_API_NO		220121212
 
+
 #define IS_PHP_55 ZEND_EXTENSION_API_NO == PHP_5_5_X_API_NO
 #define IS_AT_LEAST_PHP_55 ZEND_EXTENSION_API_NO >= PHP_5_5_X_API_NO
 
@@ -314,20 +315,21 @@ static inline void   hp_array_del(char **name_array);
 /* XHProf global state */
 static hp_global_t       hp_globals;
 
-#if PHP_VERSION_ID < 50500
+#if IS_AT_LEAST_PHP_55
+/* Pointer to the original execute function */
+static void (*_zend_execute_ex) (zend_execute_data *execute_data TSRMLS_DC);
+
+/* Pointer to the original execute_internal function */
+static void (*_zend_execute_internal) (zend_execute_data *data,
+                      struct _zend_fcall_info *fci, int ret TSRMLS_DC);
+
+#else
 /* Pointer to the original execute function */
 ZEND_DLEXPORT void (*_zend_execute) (zend_op_array *ops TSRMLS_DC);
 
 /* Pointer to the origianl execute_internal function */
 ZEND_DLEXPORT void (*_zend_execute_internal) (zend_execute_data *data,
                            int ret TSRMLS_DC);
-#else
-/* Pointer to the original execute function */
-static void (*_zend_execute_ex) (zend_execute_data *execute_data TSRMLS_DC);
-
-/* Pointer to the origianl execute_internal function */
-static void (*_zend_execute_internal) (zend_execute_data *data,
-                      struct _zend_fcall_info *fci, int ret TSRMLS_DC);
 #endif
 
 /* Pointer to the original compile function */

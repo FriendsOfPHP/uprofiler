@@ -27,8 +27,8 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
-#include "php_uprofiler.h"
 #include "Zend/zend_extensions.h"
+#include "php_uprofiler.h"
 
 /* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
@@ -62,9 +62,7 @@ zend_function_entry uprofiler_functions[] = {
 
 /* Callback functions for the uprofiler extension */
 zend_module_entry uprofiler_module_entry = {
-#if ZEND_MODULE_API_NO >= 20010901
   STANDARD_MODULE_HEADER,
-#endif
   "uprofiler",                        /* Name of the extension */
   uprofiler_functions,                /* List of functions exposed */
   PHP_MINIT(uprofiler),               /* Module init callback */
@@ -72,9 +70,7 @@ zend_module_entry uprofiler_module_entry = {
   PHP_RINIT(uprofiler),               /* Request init callback */
   PHP_RSHUTDOWN(uprofiler),           /* Request shutdown callback */
   PHP_MINFO(uprofiler),               /* Module info callback */
-#if ZEND_MODULE_API_NO >= 20010901
   PHP_UPROFILER_VERSION,
-#endif
   STANDARD_MODULE_PROPERTIES
 };
 
@@ -1381,30 +1377,30 @@ static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
  *
  * @author hzhao, kannan
  */
-#if PHP_VERSION_ID < 50500
-ZEND_DLEXPORT void hp_execute (zend_op_array *ops TSRMLS_DC) {
-#else
+#if IS_AT_LEAST_PHP_55
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
   zend_op_array *ops = execute_data->op_array;
+#else
+  ZEND_DLEXPORT void hp_execute (zend_op_array *ops TSRMLS_DC) {
 #endif
   char          *func = NULL;
   int hp_profile_flag = 1;
 
   func = hp_get_function_name(ops TSRMLS_CC);
   if (!func) {
-#if PHP_VERSION_ID < 50500
-    _zend_execute(ops TSRMLS_CC);
+#if IS_AT_LEAST_PHP_55
+	_zend_execute_ex(execute_data TSRMLS_CC);
 #else
-    _zend_execute_ex(execute_data TSRMLS_CC);
+	_zend_execute(ops TSRMLS_CC);
 #endif
     return;
   }
 
   BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
-#if PHP_VERSION_ID < 50500
-  _zend_execute(ops TSRMLS_CC);
-#else
+#if IS_AT_LEAST_PHP_55
   _zend_execute_ex(execute_data TSRMLS_CC);
+#else
+  _zend_execute(ops TSRMLS_CC);
 #endif
   if (hp_globals.entries) {
     END_PROFILING(&hp_globals.entries, hp_profile_flag);
@@ -1422,16 +1418,16 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
  * @author hzhao, kannan
  */
 
-#if PHP_VERSION_ID < 50500
-#define EX_T(offset) (*(temp_variable *)((char *) EX(Ts) + offset))
-
-ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
-                                       int ret TSRMLS_DC) {
-#else
+#if IS_AT_LEAST_PHP_55
 #define EX_T(offset) (*EX_TMP_VAR(execute_data, offset))
 
 ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
                                        struct _zend_fcall_info *fci, int ret TSRMLS_DC) {
+#else
+#define EX_T(offset) (*(temp_variable *)((char *) EX(Ts) + offset))
+
+ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
+                                       int ret TSRMLS_DC) {
 #endif
 
   zend_execute_data *current_data;
@@ -1563,12 +1559,12 @@ static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC) 
     zend_compile_string = hp_compile_string;
 
     /* Replace zend_execute with our proxy */
-#if PHP_VERSION_ID < 50500
-    _zend_execute = zend_execute;
-    zend_execute  = hp_execute;
-#else
+#if IS_AT_LEAST_PHP_55
     _zend_execute_ex = zend_execute_ex;
     zend_execute_ex  = hp_execute_ex;
+#else
+    _zend_execute = zend_execute;
+    zend_execute  = hp_execute;
 #endif
 
     /* Replace zend_execute_internal with our proxy */
@@ -1640,10 +1636,10 @@ static void hp_stop(TSRMLS_D) {
   }
 
   /* Remove proxies, restore the originals */
-#if PHP_VERSION_ID < 50500
-  zend_execute          = _zend_execute;
-#else
+#if IS_AT_LEAST_PHP_55
   zend_execute_ex       = _zend_execute_ex;
+#else
+  zend_execute          = _zend_execute;
 #endif
   zend_execute_internal = _zend_execute_internal;
   zend_compile_file     = _zend_compile_file;
