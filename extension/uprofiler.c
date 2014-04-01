@@ -30,12 +30,6 @@
 #include "php_uprofiler.h"
 #include "Zend/zend_extensions.h"
 
-
-
-
-
-
-
 /* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
   ZEND_ARG_INFO(0, flags)
@@ -1502,9 +1496,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
   int             hp_profile_flag = 1;
 
   filename = hp_get_base_filename(file_handle->filename);
-  len      = strlen("load") + strlen(filename) + 3;
-  func      = (char *)emalloc(len);
-  snprintf(func, len, "load::%s", filename);
+  spprintf(&func, 0, "load::%s", filename);
 
   BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
   ret = _zend_compile_file(file_handle, type TSRMLS_CC);
@@ -1526,9 +1518,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
     zend_op_array *ret;
     int            hp_profile_flag = 1;
 
-    len  = strlen("eval") + strlen(filename) + 3;
-    func = (char *)emalloc(len);
-    snprintf(func, len, "eval::%s", filename);
+    spprintf(&func, 0, "eval::%s", filename);
 
     BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
     ret = _zend_compile_string(source_string, filename TSRMLS_CC);
