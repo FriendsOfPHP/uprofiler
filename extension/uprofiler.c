@@ -663,7 +663,7 @@ static const char *hp_get_base_filename(const char *filename) {
  *
  * @author kannan, hzhao
  */
-static char *hp_get_function_name(zend_op_array *ops TSRMLS_DC) {
+static char *hp_get_function_name(void) {
   zend_execute_data *data;
   const char        *func = NULL;
   const char        *cls = NULL;
@@ -1379,14 +1379,13 @@ static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
  */
 #if IS_AT_LEAST_PHP_55
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
-  zend_op_array *ops = execute_data->op_array;
 #else
   ZEND_DLEXPORT void hp_execute (zend_op_array *ops TSRMLS_DC) {
 #endif
   char          *func = NULL;
   int hp_profile_flag = 1;
 
-  func = hp_get_function_name(ops TSRMLS_CC);
+  func = hp_get_function_name();
   if (!func) {
 #if IS_AT_LEAST_PHP_55
 	_zend_execute_ex(execute_data TSRMLS_CC);
@@ -1435,7 +1434,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
   int    hp_profile_flag = 1;
 
   current_data = EG(current_execute_data);
-  func = hp_get_function_name(current_data->op_array TSRMLS_CC);
+  func = hp_get_function_name();
 
   if (func) {
     BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
