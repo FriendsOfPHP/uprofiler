@@ -1441,9 +1441,8 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
   }
 
   if (!_zend_execute_internal) { /* no old override to begin with. so invoke the builtin's implementation  */
-
-#if IS_PHP_54
 	zend_op *opline = EX(opline);
+#if IS_PHP_54
     temp_variable *retvar = &EX_T(opline->result.var);
     ((zend_internal_function *) EX(function_state).function)->handler(
                        opline->extended_value,
