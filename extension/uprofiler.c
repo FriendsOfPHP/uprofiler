@@ -672,6 +672,8 @@ static char *hp_get_function_name(void) {
   size_t            len;
   zend_function     *curr_func = NULL;
 
+  TSRMLS_FETCH();
+
   data = EG(current_execute_data);
 
   if (data) {

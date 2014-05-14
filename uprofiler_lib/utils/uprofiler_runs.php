@@ -65,7 +65,7 @@ interface iXHProfRuns {
  *
  * @author Kannan
  */
-class XHProfRuns_Default implements iXHProfRuns {
+class uprofilerRuns_Default implements iXHProfRuns {
 
   private $dir = '';
   private $suffix = 'uprofiler';
