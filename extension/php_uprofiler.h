@@ -303,8 +303,6 @@ static void incr_us_interval(struct timeval *start, uint64 incr);
 
 static void hp_get_ignored_functions_from_arg(zval *args);
 static char *hp_get_function_name(void);
-static void hp_ignored_functions_filter_clear();
-static void hp_ignored_functions_filter_init();
 
 static inline char **hp_strings_in_zval(zval  *values);
 static inline void   hp_array_del(char **name_array);

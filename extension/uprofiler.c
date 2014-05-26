@@ -197,8 +197,6 @@ PHP_MINIT_FUNCTION(uprofiler) {
   CPU_ZERO(&(hp_globals.prev_mask));
 #endif
 
-  hp_ignored_functions_filter_clear();
-
 #if defined(DEBUG)
   /* To make it random number generator repeatable to ease testing. */
   srand(0);
@@ -337,16 +335,6 @@ static void hp_get_ignored_functions_from_arg(zval *args) {
 nullify_functions_names:
 	  hp_globals.ignored_function_names = NULL;
   }
-}
-
-/**
- * Clear filter for functions which may be ignored during profiling.
- *
- * @author mpal
- */
-static void hp_ignored_functions_filter_clear() {
-  memset(hp_globals.ignored_function_filter, 0,
-         XHPROF_IGNORED_FUNCTION_FILTER_SIZE);
 }
 
 /**
