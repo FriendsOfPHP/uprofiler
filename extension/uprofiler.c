@@ -213,9 +213,6 @@ PHP_MSHUTDOWN_FUNCTION(uprofiler) {
   /* Make sure cpu_frequencies is free'ed. */
   clear_frequencies();
 
-  /* free any remaining items in the free list */
-  hp_free_the_free_list();
-
   UNREGISTER_INI_ENTRIES();
 
   return SUCCESS;
@@ -233,6 +230,9 @@ PHP_RINIT_FUNCTION(uprofiler) {
  */
 PHP_RSHUTDOWN_FUNCTION(uprofiler) {
   hp_end(TSRMLS_C);
+  /* free any remaining items in the free list */
+  hp_free_the_free_list();
+
   return SUCCESS;
 }
 
@@ -726,7 +726,7 @@ static void hp_free_the_free_list() {
   while (p) {
     cur = p;
     p = p->prev_hprof;
-    free(cur);
+    efree(cur);
   }
 }
 
@@ -747,7 +747,7 @@ static hp_entry_t *hp_fast_alloc_hprof_entry() {
     hp_globals.entry_free_list = p->prev_hprof;
     return p;
   } else {
-    return (hp_entry_t *)malloc(sizeof(hp_entry_t));
+    return (hp_entry_t *)emalloc(sizeof(hp_entry_t));
   }
 }
 
