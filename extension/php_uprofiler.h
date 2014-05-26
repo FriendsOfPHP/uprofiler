@@ -152,6 +152,7 @@ extern zend_module_entry uprofiler_module_entry;
 #define XHPROF_MAX_IGNORED_FUNCTIONS  256
 #define XHPROF_IGNORED_FUNCTION_FILTER_SIZE                           \
                ((XHPROF_MAX_IGNORED_FUNCTIONS + 7)/8)
+#define XHPROF_FUNC_HASH_COUNTER 256
 
 #if !defined(uint64)
 typedef unsigned long long uint64;
@@ -261,7 +262,7 @@ typedef struct hp_global_t {
   long uprofiler_flags;
 
   /* counter table indexed by hash value of function names. */
-  uint8  func_hash_counters[256];
+  uint8  func_hash_counters[XHPROF_FUNC_HASH_COUNTER];
 
   /* Table of ignored function names and their filter */
   char  **ignored_function_names;
@@ -314,7 +315,7 @@ static inline void   hp_array_del(char **name_array);
  * ***********************
  */
 /* XHProf global state */
-static hp_global_t       hp_globals;
+static hp_global_t       hp_globals = {0};
 
 #if IS_AT_LEAST_PHP_55
 /* Pointer to the original execute function */

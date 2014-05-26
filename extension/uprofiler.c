@@ -174,8 +174,6 @@ PHP_FUNCTION(uprofiler_sample_disable) {
  * @author cjiang
  */
 PHP_MINIT_FUNCTION(uprofiler) {
-  unsigned short i;
-  unsigned long s_mask;
 
   REGISTER_INI_ENTRIES();
 
@@ -198,19 +196,6 @@ PHP_MINIT_FUNCTION(uprofiler) {
 #else
   CPU_ZERO(&(hp_globals.prev_mask));
 #endif
-
-  /* Initialize cpu_frequencies and cur_cpu_id. */
-  hp_globals.cpu_frequencies = NULL;
-  hp_globals.cur_cpu_id = 0;
-
-  hp_globals.stats_count = NULL;
-
-  /* no free hp_entry_t structures to start with */
-  hp_globals.entry_free_list = NULL;
-
-  for (i = 0; i < 256; i++) {
-    hp_globals.func_hash_counters[i] = 0;
-  }
 
   hp_ignored_functions_filter_clear();
 
