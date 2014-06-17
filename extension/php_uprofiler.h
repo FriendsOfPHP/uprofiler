@@ -96,6 +96,10 @@ extern zend_module_entry uprofiler_module_entry;
 		hp_globals.ignored_function_names = NULL; \
 } while (0);
 
+#define BEGIN_PROFILING(function_name) begin_profiling(&hp_globals.entries, function_name)
+#define END_PROFILING() end_profiling(&hp_globals.entries)
+
+
 /**
  * COMPAT
  */
@@ -164,12 +168,12 @@ typedef unsigned int uint32;
 typedef unsigned char uint8;
 #endif
 
-
 /**
  * *****************************
  * GLOBAL DATATYPES AND TYPEDEFS
  * *****************************
  */
+
 
 /* XHProf maintains a stack of entries being profiled. The memory for the entry
  * is passed by the layer that invokes BEGIN_PROFILING(), e.g. the hp_execute()
@@ -252,8 +256,7 @@ typedef struct hp_global_t {
   /* The number of logical CPUs this machine has. */
   uint32 cpu_num;
 
-  /* The saved cpu affinity. */
-  cpu_set_t prev_mask;
+  cpu_set_t cpu_orig_mask;
 
   /* The cpu id current process is bound to. (default 0) */
   uint32 cur_cpu_id;
@@ -285,27 +288,58 @@ static int bind_to_cpu(uint32 cpu_id);
  */
 static void hp_register_constants(INIT_FUNC_ARGS);
 
-static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC);
+static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC);
 static void hp_stop(TSRMLS_D);
 static void hp_end(TSRMLS_D);
+int hp_init_profiler_state(char level TSRMLS_DC);
+
 
 static inline uint64 cycle_timer();
 static double get_cpu_frequency();
+static int get_all_cpu_frequencies();
 static void clear_frequencies();
+static inline double get_us_from_tsc(uint64 count, double cpu_frequency);
 
 static void hp_free_the_free_list();
 static hp_entry_t *hp_fast_alloc_hprof_entry();
-static void hp_fast_free_hprof_entry(hp_entry_t *p);
 static inline uint8 hp_inline_hash(char * str);
-static void get_all_cpu_frequencies();
 static long get_us_interval(struct timeval *start, struct timeval *end);
 static void incr_us_interval(struct timeval *start, uint64 incr);
+static inline uint64 get_tsc_from_us(uint64 usecs, double cpu_frequency);
 
 static void hp_get_ignored_functions_from_arg(zval *args);
 static char *hp_get_function_name(void);
+static size_t hp_get_entry_name(hp_entry_t  *entry, char *result_buf, size_t result_len);
+static int  hp_ignore_entry_work(uint8 hash_code, char *curr_func);
 
 static inline char **hp_strings_in_zval(zval  *values);
 static inline void   hp_array_del(char **name_array);
+static inline char  hp_ignore_entry(uint8 hash_code, char *curr_func);
+static void hp_clean_profiler_state(TSRMLS_D);
+static size_t hp_get_function_stack(hp_entry_t *entry, int level, char *result_buf, size_t result_len);
+static const char *hp_get_base_filename(const char *filename);
+static void hp_inc_count(zval *counts, char *name, long count TSRMLS_DC);
+static zval * hp_hash_lookup(char *symbol  TSRMLS_DC);
+static void hp_trunc_time(struct timeval *tv, uint64 intr);
+
+static void hp_sample_stack(hp_entry_t  **entries  TSRMLS_DC);
+static void hp_sample_check(hp_entry_t **entries  TSRMLS_DC);
+
+static void hp_mode_common_beginfn(hp_entry_t **entries,
+                            hp_entry_t  *current  TSRMLS_DC);
+static void hp_mode_common_endfn(hp_entry_t **entries, hp_entry_t *current TSRMLS_DC);
+static void hp_mode_sampled_init_cb(TSRMLS_D);
+static void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
+                             hp_entry_t  *current  TSRMLS_DC);
+static void hp_mode_sampled_beginfn_cb(hp_entry_t **entries,
+                                hp_entry_t  *current  TSRMLS_DC);
+static zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
+                               char          *symbol  TSRMLS_DC);
+static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
+static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
+
+static inline void begin_profiling(hp_entry_t **entries, char *function_name);
+static inline void end_profiling(hp_entry_t **entries);
 
 /**
  * ***********************
@@ -342,6 +376,8 @@ static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filen
 /* Bloom filter for function names to be ignored */
 #define INDEX_2_BYTE(index)  (index >> 3)
 #define INDEX_2_BIT(index)   (1 << (index & 0x7));
+#undef EX
+#define EX(element) ((execute_data)->element)
 
 PHP_MINIT_FUNCTION(uprofiler);
 PHP_MSHUTDOWN_FUNCTION(uprofiler);

@@ -28,7 +28,9 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "Zend/zend_extensions.h"
+#include "ext/standard/php_rand.h"
 #include "php_uprofiler.h"
+#include "ext/standard/basic_functions.h"
 
 /* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
@@ -89,6 +91,44 @@ PHP_INI_END()
 /* Init module */
 ZEND_GET_MODULE(uprofiler)
 
+static inline void begin_profiling(hp_entry_t **entries, char *function_name)
+{
+	char profile_curr = 0;
+	uint8 hash_code   = hp_inline_hash(function_name);
+	profile_curr      = !hp_ignore_entry(hash_code, function_name);
+	if (profile_curr) {
+		hp_entry_t *cur_entry = hp_fast_alloc_hprof_entry();
+		(cur_entry)->hash_code = hash_code;
+		(cur_entry)->name_hprof = function_name;
+		(cur_entry)->prev_hprof = *entries;
+		hp_mode_common_beginfn(entries, cur_entry TSRMLS_CC);
+		hp_globals.mode_cb.begin_fn_cb(entries, cur_entry TSRMLS_CC);
+		*entries = cur_entry;
+	} else {
+		efree((function_name));
+	}
+}
+
+static inline void end_profiling(hp_entry_t **entries)
+{
+	if (*entries) {
+		hp_entry_t *cur_entry;
+		hp_globals.mode_cb.end_fn_cb(entries TSRMLS_CC);
+		cur_entry = *(entries);
+		hp_mode_common_endfn(entries, cur_entry TSRMLS_CC);
+		*entries = (*entries)->prev_hprof;
+		if (cur_entry->name_hprof) {
+			efree(cur_entry->name_hprof);
+			cur_entry->name_hprof = NULL;
+		}
+		memset(cur_entry, 0, sizeof(*cur_entry));
+		cur_entry->prev_hprof = hp_globals.entry_free_list;
+		hp_globals.entry_free_list = cur_entry;
+	}
+}
+
+
+
 
 /**
  * **********************************
@@ -113,15 +153,20 @@ PHP_FUNCTION(uprofiler_enable) {
   }
 
   if(hp_globals.enabled == 1) {
+	  php_error(E_NOTICE, "uprofiler is already enabled");
 	  RETURN_FALSE;
   }
 
   if (uprofiler_flags < 0) {
-	  php_error(E_NOTICE, "Can't use negative values for $flags, assuming 0");
+	  php_error(E_WARNING, "Can't use negative values for $flags, assuming 0");
 	  uprofiler_flags = 0;
   }
-  hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC);
-  RETURN_TRUE;
+
+  if (EXPECTED(hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC) == SUCCESS)) {
+	  RETURN_TRUE;
+  }
+
+  RETURN_FALSE;
 }
 
 /**
@@ -146,11 +191,16 @@ PHP_FUNCTION(uprofiler_disable) {
  * @author cjiang
  */
 PHP_FUNCTION(uprofiler_sample_enable) {
+	RETVAL_FALSE;
+
 	if(hp_globals.enabled == 1) {
-		RETURN_FALSE;
+		php_error(E_NOTICE, "uprofiler is already enabled");
+		return;
 	}
-	hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */, NULL TSRMLS_CC);
-	RETURN_TRUE;
+
+	if (EXPECTED(hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */, NULL TSRMLS_CC) == SUCCESS)) {
+		RETURN_TRUE;
+	}
 }
 
 /**
@@ -173,9 +223,10 @@ PHP_FUNCTION(uprofiler_sample_disable) {
  *
  * @author cjiang
  */
-PHP_MINIT_FUNCTION(uprofiler) {
+PHP_MINIT_FUNCTION(uprofiler)
+{
 
-  REGISTER_INI_ENTRIES();
+	REGISTER_INI_ENTRIES();
 
   hp_register_constants(INIT_FUNC_ARGS_PASSTHRU);
 
@@ -189,19 +240,24 @@ PHP_MINIT_FUNCTION(uprofiler) {
 
   /* Get the cpu affinity mask. */
 #ifndef __APPLE__
-  if (GET_AFFINITY(0, sizeof(cpu_set_t), &hp_globals.prev_mask) < 0) {
-    perror("getaffinity");
+  if (GET_AFFINITY(0, sizeof(cpu_set_t), &hp_globals.cpu_orig_mask) < 0) {
     return FAILURE;
   }
 #else
-  CPU_ZERO(&(hp_globals.prev_mask));
+  CPU_ZERO(&(hp_globals.cpu_orig_mask));
 #endif
 
-#if defined(DEBUG)
-  /* To make it random number generator repeatable to ease testing. */
-  srand(0);
-#endif
-  return SUCCESS;
+	if (UNEXPECTED(get_all_cpu_frequencies() == FAILURE)) {
+		return FAILURE;
+	}
+
+	if (!BG(mt_rand_is_seeded)) {
+		php_mt_srand(GENERATE_SEED() TSRMLS_CC);
+	}
+
+	restore_cpu_affinity(&hp_globals.cpu_orig_mask);
+
+	return SUCCESS;
 }
 
 /**
@@ -216,18 +272,17 @@ PHP_MSHUTDOWN_FUNCTION(uprofiler) {
   return SUCCESS;
 }
 
-/**
- * Request init callback. Nothing to do yet!
- */
-PHP_RINIT_FUNCTION(uprofiler) {
-  return SUCCESS;
+PHP_RINIT_FUNCTION(uprofiler)
+{
+	return SUCCESS;
 }
 
 /**
  * Request shutdown callback. Stop profiling and return.
  */
 PHP_RSHUTDOWN_FUNCTION(uprofiler) {
-  hp_end(TSRMLS_C);
+    hp_stop();
+	hp_end(TSRMLS_C);
   /* free any remaining items in the free list */
   hp_free_the_free_list();
 
@@ -369,38 +424,40 @@ int hp_ignored_functions_filter_collision(uint8 hash) {
  *
  * @author kannan, veeve
  */
-void hp_init_profiler_state(char level TSRMLS_DC) {
+int hp_init_profiler_state(char level TSRMLS_DC) {
   /* Setup globals */
   if (!hp_globals.ever_enabled) {
     hp_globals.ever_enabled  = 1;
-    hp_globals.entries = NULL;
+    hp_globals.entries       = NULL;
   }
-  hp_globals.profiler_level  = level;
+  hp_globals.profiler_level = level;
 
-  /* Init stats_count */
-  if (hp_globals.stats_count) {
-    zval_dtor(hp_globals.stats_count);
-    FREE_ZVAL(hp_globals.stats_count);
-  }
-  MAKE_STD_ZVAL(hp_globals.stats_count);
-  array_init(hp_globals.stats_count);
-
-  /* NOTE(cjiang): some fields such as cpu_frequencies take relatively longer
-   * to initialize, (5 milisecond per logical cpu right now), therefore we
-   * calculate them lazily. */
   if (hp_globals.cpu_frequencies == NULL) {
-    get_all_cpu_frequencies();
-    restore_cpu_affinity(&hp_globals.prev_mask);
+    if (UNEXPECTED(get_all_cpu_frequencies() == FAILURE)) {
+    	return FAILURE;
+    }
   }
 
   /* bind to a random cpu so that we can use rdtsc instruction. */
-  bind_to_cpu((int) (rand() % hp_globals.cpu_num));
+  if (UNEXPECTED(bind_to_cpu((int) (php_rand() % (long)hp_globals.cpu_num)) == FAILURE)) {
+	  return FAILURE;
+  }
 
   /* Call current mode's init cb */
   hp_globals.mode_cb.init_cb(TSRMLS_C);
 
   /* Set up filter of functions which may be ignored during profiling */
   hp_ignored_functions_filter_init();
+
+  /* Init stats_count */
+    if (hp_globals.stats_count) {
+      zval_dtor(hp_globals.stats_count);
+      FREE_ZVAL(hp_globals.stats_count);
+    }
+    MAKE_STD_ZVAL(hp_globals.stats_count);
+    array_init(hp_globals.stats_count);
+
+    return SUCCESS;
 }
 
 /**
@@ -408,7 +465,7 @@ void hp_init_profiler_state(char level TSRMLS_DC) {
  *
  * @author kannan, veeve
  */
-void hp_clean_profiler_state(TSRMLS_D) {
+static void hp_clean_profiler_state(TSRMLS_D) {
   /* Call current mode's exit cb */
   hp_globals.mode_cb.exit_cb(TSRMLS_C);
 
@@ -426,60 +483,6 @@ void hp_clean_profiler_state(TSRMLS_D) {
   CLEAR_IGNORED_FUNC_NAMES;
 }
 
-/*
- * Start profiling - called just before calling the actual function
- * NOTE:  PLEASE MAKE SURE TSRMLS_CC IS AVAILABLE IN THE CONTEXT
- *        OF THE FUNCTION WHERE THIS MACRO IS CALLED.
- *        TSRMLS_CC CAN BE MADE AVAILABLE VIA TSRMLS_DC IN THE
- *        CALLING FUNCTION OR BY CALLING TSRMLS_FETCH()
- *        TSRMLS_FETCH() IS RELATIVELY EXPENSIVE.
- */
-#define BEGIN_PROFILING(entries, symbol, profile_curr)                  \
-  do {                                                                  \
-    /* Use a hash code to filter most of the string comparisons. */     \
-    uint8 hash_code  = hp_inline_hash(symbol);                          \
-    profile_curr = !hp_ignore_entry(hash_code, symbol);                 \
-    if (profile_curr) {                                                 \
-      hp_entry_t *cur_entry = hp_fast_alloc_hprof_entry();              \
-      (cur_entry)->hash_code = hash_code;                               \
-      (cur_entry)->name_hprof = symbol;                                 \
-      (cur_entry)->prev_hprof = (*(entries));                           \
-      /* Call the universal callback */                                 \
-      hp_mode_common_beginfn((entries), (cur_entry) TSRMLS_CC);         \
-      /* Call the mode's beginfn callback */                            \
-      hp_globals.mode_cb.begin_fn_cb((entries), (cur_entry) TSRMLS_CC); \
-      /* Update entries linked list */                                  \
-      (*(entries)) = (cur_entry);                                       \
-    }                                                                   \
-  } while (0)
-
-/*
- * Stop profiling - called just after calling the actual function
- * NOTE:  PLEASE MAKE SURE TSRMLS_CC IS AVAILABLE IN THE CONTEXT
- *        OF THE FUNCTION WHERE THIS MACRO IS CALLED.
- *        TSRMLS_CC CAN BE MADE AVAILABLE VIA TSRMLS_DC IN THE
- *        CALLING FUNCTION OR BY CALLING TSRMLS_FETCH()
- *        TSRMLS_FETCH() IS RELATIVELY EXPENSIVE.
- */
-#define END_PROFILING(entries, profile_curr)                            \
-  do {                                                                  \
-    if (profile_curr) {                                                 \
-      hp_entry_t *cur_entry;                                            \
-      /* Call the mode's endfn callback. */                             \
-      /* NOTE(cjiang): we want to call this 'end_fn_cb' before */       \
-      /* 'hp_mode_common_endfn' to avoid including the time in */       \
-      /* 'hp_mode_common_endfn' in the profiling results.      */       \
-      hp_globals.mode_cb.end_fn_cb((entries) TSRMLS_CC);                \
-      cur_entry = (*(entries));                                         \
-      /* Call the universal callback */                                 \
-      hp_mode_common_endfn((entries), (cur_entry) TSRMLS_CC);           \
-      /* Free top entry and update entries linked list */               \
-      (*(entries)) = (*(entries))->prev_hprof;                          \
-      hp_fast_free_hprof_entry(cur_entry);                              \
-    }                                                                   \
-  } while (0)
-
-
 /**
  * Returns formatted function name
  *
@@ -489,7 +492,7 @@ void hp_clean_profiler_state(TSRMLS_D) {
  * @return total size of the function name returned in result_buf
  * @author veeve
  */
-size_t hp_get_entry_name(hp_entry_t  *entry,
+static size_t hp_get_entry_name(hp_entry_t  *entry,
                          char           *result_buf,
                          size_t          result_len) {
 
@@ -524,7 +527,7 @@ size_t hp_get_entry_name(hp_entry_t  *entry,
  *
  * @author mpal
  */
-int  hp_ignore_entry_work(uint8 hash_code, char *curr_func) {
+static int  hp_ignore_entry_work(uint8 hash_code, char *curr_func) {
   int ignore = 0;
   if (hp_ignored_functions_filter_collision(hash_code)) {
     size_t i = 0;
@@ -540,7 +543,7 @@ int  hp_ignore_entry_work(uint8 hash_code, char *curr_func) {
   return ignore;
 }
 
-static inline int  hp_ignore_entry(uint8 hash_code, char *curr_func) {
+static inline char  hp_ignore_entry(uint8 hash_code, char *curr_func) {
   /* First check if ignoring functions is enabled */
   return hp_globals.ignored_function_names != NULL &&
          hp_ignore_entry_work(hash_code, curr_func);
@@ -560,7 +563,7 @@ static inline int  hp_ignore_entry(uint8 hash_code, char *curr_func) {
  *
  * @author kannan, veeve
  */
-size_t hp_get_function_stack(hp_entry_t *entry,
+static size_t hp_get_function_stack(hp_entry_t *entry,
                              int            level,
                              char          *result_buf,
                              size_t         result_len) {
@@ -716,6 +719,7 @@ static void hp_free_the_free_list() {
     p = p->prev_hprof;
     efree(cur);
   }
+  hp_globals.entry_free_list = NULL;
 }
 
 /**
@@ -735,23 +739,8 @@ static hp_entry_t *hp_fast_alloc_hprof_entry() {
     hp_globals.entry_free_list = p->prev_hprof;
     return p;
   } else {
-    return (hp_entry_t *)emalloc(sizeof(hp_entry_t));
+    return (hp_entry_t *)ecalloc(1, sizeof(hp_entry_t));
   }
-}
-
-/**
- * Fast free a hp_entry_t structure. Simply returns back
- * the hp_entry_t to a free list and doesn't actually
- * perform the free.
- *
- * @author kannan
- */
-static void hp_fast_free_hprof_entry(hp_entry_t *p) {
-
-  /* we use/overload the prev_hprof field in the structure to link entries in
-   * the free list. */
-  p->prev_hprof = hp_globals.entry_free_list;
-  hp_globals.entry_free_list = p;
 }
 
 /**
@@ -951,14 +940,13 @@ static int bind_to_cpu(uint32 cpu_id) {
   CPU_SET(cpu_id, &new_mask);
 
   if (SET_AFFINITY(0, sizeof(cpu_set_t), &new_mask) < 0) {
-    perror("setaffinity");
-    return -1;
+    return FAILURE;
   }
 
   /* record the cpu_id the process is bound to. */
   hp_globals.cur_cpu_id = cpu_id;
 
-  return 0;
+  return SUCCESS;
 }
 
 /**
@@ -1019,7 +1007,6 @@ static double get_cpu_frequency() {
   uint64 tsc_end;
 
   if (gettimeofday(&start, 0)) {
-    perror("gettimeofday");
     return 0.0;
   }
   
@@ -1029,7 +1016,6 @@ static double get_cpu_frequency() {
    * execution time, this should be enough. */
   usleep(5000);
   if (gettimeofday(&end, 0)) {
-    perror("gettimeofday");
     return 0.0;
   }
   
@@ -1043,21 +1029,18 @@ static double get_cpu_frequency() {
  *
  * @author cjiang
  */
-static void get_all_cpu_frequencies() {
+static int get_all_cpu_frequencies() {
   uint32 id;
   double frequency;
 
-  hp_globals.cpu_frequencies = malloc(sizeof(double) * hp_globals.cpu_num);
-  if (hp_globals.cpu_frequencies == NULL) {
-    return;
-  }
+  hp_globals.cpu_frequencies = pemalloc(sizeof(double) * hp_globals.cpu_num, 1);
 
   /* Iterate over all cpus found on the machine. */
   for (id = 0; id < hp_globals.cpu_num; ++id) {
     /* Only get the previous cpu affinity mask for the first call. */
-    if (bind_to_cpu(id)) {
+    if (UNEXPECTED(bind_to_cpu(id) == FAILURE)) {
       clear_frequencies();
-      return;
+      return FAILURE;
     }
 
     /* Make sure the current process gets scheduled to the target cpu. This
@@ -1065,12 +1048,14 @@ static void get_all_cpu_frequencies() {
     usleep(0);
 
     frequency = get_cpu_frequency();
-    if (frequency == 0.0) {
+    if (UNEXPECTED(frequency == 0.0)) {
       clear_frequencies();
-      return;
+      return FAILURE;
     }
     hp_globals.cpu_frequencies[id] = frequency;
   }
+
+  return SUCCESS;
 }
 
 /**
@@ -1084,12 +1069,11 @@ static void get_all_cpu_frequencies() {
  */
 static int restore_cpu_affinity(cpu_set_t * prev_mask) {
   if (SET_AFFINITY(0, sizeof(cpu_set_t), prev_mask) < 0) {
-    perror("restore setaffinity");
-    return -1;
+    return FAILURE;
   }
-  /* default value ofor cur_cpu_id is 0. */
+
   hp_globals.cur_cpu_id = 0;
-  return 0;
+  return SUCCESS;
 }
 
 /**
@@ -1099,10 +1083,10 @@ static int restore_cpu_affinity(cpu_set_t * prev_mask) {
  */
 static void clear_frequencies() {
   if (hp_globals.cpu_frequencies) {
-    free(hp_globals.cpu_frequencies);
+    pefree(hp_globals.cpu_frequencies, 1);
     hp_globals.cpu_frequencies = NULL;
   }
-  restore_cpu_affinity(&hp_globals.prev_mask);
+  restore_cpu_affinity(&hp_globals.cpu_orig_mask);
 }
 
 
@@ -1339,26 +1323,13 @@ static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
 }
 
 
-/**
- * ***************************
- * PHP EXECUTE/COMPILE PROXIES
- * ***************************
- */
 
-/**
- * XHProf enable replaced the zend_execute function with this
- * new execute function. We can do whatever profiling we need to
- * before and after calling the actual zend_execute().
- *
- * @author hzhao, kannan
- */
 #if IS_AT_LEAST_PHP_55
 ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
 #else
   ZEND_DLEXPORT void hp_execute (zend_op_array *ops TSRMLS_DC) {
 #endif
   char          *func = NULL;
-  int hp_profile_flag = 1;
 
   func = hp_get_function_name();
   if (!func) {
@@ -1370,27 +1341,14 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
     return;
   }
 
-  BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
+  BEGIN_PROFILING(func);
 #if IS_AT_LEAST_PHP_55
   _zend_execute_ex(execute_data TSRMLS_CC);
 #else
   _zend_execute(ops TSRMLS_CC);
 #endif
-  if (hp_globals.entries) {
-    END_PROFILING(&hp_globals.entries, hp_profile_flag);
-  }
-  efree(func);
+    END_PROFILING();
 }
-
-#undef EX
-#define EX(element) ((execute_data)->element)
-
-/**
- * Very similar to hp_execute. Proxy for zend_execute_internal().
- * Applies to zend builtin functions.
- *
- * @author hzhao, kannan
- */
 
 #if IS_AT_LEAST_PHP_55
 #define EX_T(offset) (*EX_TMP_VAR(execute_data, offset))
@@ -1406,13 +1364,12 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
 
   zend_execute_data *current_data;
   char             *func = NULL;
-  int    hp_profile_flag = 1;
 
   current_data = EG(current_execute_data);
   func = hp_get_function_name();
 
   if (func) {
-    BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
+    BEGIN_PROFILING(func);
   }
 
   if (!_zend_execute_internal) { /* no old override to begin with. so invoke the builtin's implementation  */
@@ -1446,19 +1403,11 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
   }
 
   if (func) {
-    if (hp_globals.entries) {
-      END_PROFILING(&hp_globals.entries, hp_profile_flag);
-    }
-    efree(func);
+    END_PROFILING();
   }
 
 }
 
-/**
- * Proxy for zend_compile_file(). Used to profile PHP compilation time.
- *
- * @author kannan, hzhao
- */
 ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
                                              int type TSRMLS_DC) {
 
@@ -1466,40 +1415,29 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
   char           *func;
   int             len;
   zend_op_array  *ret;
-  int             hp_profile_flag = 1;
 
   filename = hp_get_base_filename(file_handle->filename);
   spprintf(&func, 0, "load::%s", filename);
 
-  BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
+  BEGIN_PROFILING(func);
   ret = _zend_compile_file(file_handle, type TSRMLS_CC);
-  if (hp_globals.entries) {
-    END_PROFILING(&hp_globals.entries, hp_profile_flag);
-  }
+  END_PROFILING();
 
-  efree(func);
   return ret;
 }
 
-/**
- * Proxy for zend_compile_string(). Used to profile PHP eval compilation time.
- */
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename TSRMLS_DC) {
 
     char          *func;
     int            len;
     zend_op_array *ret;
-    int            hp_profile_flag = 1;
 
     spprintf(&func, 0, "eval::%s", filename);
 
-    BEGIN_PROFILING(&hp_globals.entries, func, hp_profile_flag);
+    BEGIN_PROFILING(func);
     ret = _zend_compile_string(source_string, filename TSRMLS_CC);
-    if (hp_globals.entries) {
-        END_PROFILING(&hp_globals.entries, hp_profile_flag);
-    }
+    END_PROFILING();
 
-    efree(func);
     return ret;
 }
 
@@ -1514,22 +1452,42 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
  * It replaces all the functions like zend_execute, zend_execute_internal,
  * etc that needs to be instrumented with their corresponding proxies.
  */
-static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC) {
-  if (!hp_globals.enabled) {
+static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC)
+{
+	if (hp_globals.enabled) {
+		return SUCCESS;
+	}
+
+	hp_globals.mode_cb.init_cb     = hp_mode_dummy_init_cb;
+	hp_globals.mode_cb.exit_cb     = hp_mode_dummy_exit_cb;
+	hp_globals.mode_cb.begin_fn_cb = hp_mode_dummy_beginfn_cb;
+	hp_globals.mode_cb.end_fn_cb   = hp_mode_dummy_endfn_cb;
+
+	switch(level) {
+		case XHPROF_MODE_HIERARCHICAL:
+			hp_globals.mode_cb.begin_fn_cb = hp_mode_hier_beginfn_cb;
+			hp_globals.mode_cb.end_fn_cb   = hp_mode_hier_endfn_cb;
+		break;
+		case XHPROF_MODE_SAMPLED:
+			hp_globals.mode_cb.init_cb     = hp_mode_sampled_init_cb;
+			hp_globals.mode_cb.begin_fn_cb = hp_mode_sampled_beginfn_cb;
+			hp_globals.mode_cb.end_fn_cb   = hp_mode_sampled_endfn_cb;
+		break;
+	}
+
+	if (UNEXPECTED(hp_init_profiler_state(level TSRMLS_CC) == FAILURE)) {
+		return FAILURE;
+	}
+
 	hp_get_ignored_functions_from_arg(options);
 
-    int hp_profile_flag = 1;
-
-    hp_globals.enabled      = 1;
+    hp_globals.enabled         = 1;
     hp_globals.uprofiler_flags = uprofiler_flags;
 
-    /* Replace zend_compile with our proxy */
-    _zend_compile_file = zend_compile_file;
-    zend_compile_file  = hp_compile_file;
-
-    /* Replace zend_compile_string with our proxy */
+    _zend_compile_file   = zend_compile_file;
+    zend_compile_file    = hp_compile_file;
     _zend_compile_string = zend_compile_string;
-    zend_compile_string = hp_compile_string;
+    zend_compile_string  = hp_compile_string;
 
     /* Replace zend_execute with our proxy */
 #if IS_AT_LEAST_PHP_55
@@ -1540,42 +1498,14 @@ static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC) 
     zend_execute  = hp_execute;
 #endif
 
-    /* Replace zend_execute_internal with our proxy */
-    _zend_execute_internal = zend_execute_internal;
     if (!(hp_globals.uprofiler_flags & XHPROF_FLAGS_NO_BUILTINS)) {
-      /* if NO_BUILTINS is not set (i.e. user wants to profile builtins),
-       * then we intercept internal (builtin) function calls.
-       */
-      zend_execute_internal = hp_execute_internal;
+    	_zend_execute_internal = zend_execute_internal;
+    	zend_execute_internal  = hp_execute_internal;
     }
 
-    /* Initialize with the dummy mode first Having these dummy callbacks saves
-     * us from checking if any of the callbacks are NULL everywhere. */
-    hp_globals.mode_cb.init_cb     = hp_mode_dummy_init_cb;
-    hp_globals.mode_cb.exit_cb     = hp_mode_dummy_exit_cb;
-    hp_globals.mode_cb.begin_fn_cb = hp_mode_dummy_beginfn_cb;
-    hp_globals.mode_cb.end_fn_cb   = hp_mode_dummy_endfn_cb;
+    BEGIN_PROFILING(estrdup(ROOT_SYMBOL));
 
-    /* Register the appropriate callback functions Override just a subset of
-     * all the callbacks is OK. */
-    switch(level) {
-      case XHPROF_MODE_HIERARCHICAL:
-        hp_globals.mode_cb.begin_fn_cb = hp_mode_hier_beginfn_cb;
-        hp_globals.mode_cb.end_fn_cb   = hp_mode_hier_endfn_cb;
-        break;
-      case XHPROF_MODE_SAMPLED:
-        hp_globals.mode_cb.init_cb     = hp_mode_sampled_init_cb;
-        hp_globals.mode_cb.begin_fn_cb = hp_mode_sampled_beginfn_cb;
-        hp_globals.mode_cb.end_fn_cb   = hp_mode_sampled_endfn_cb;
-        break;
-    }
-
-    /* one time initializations */
-    hp_init_profiler_state(level TSRMLS_CC);
-
-    /* start profiling from fictitious main() */
-    BEGIN_PROFILING(&hp_globals.entries, ROOT_SYMBOL, hp_profile_flag);
-  }
+    return SUCCESS;
 }
 
 /**
@@ -1583,13 +1513,8 @@ static void hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC) 
  */
 static void hp_end(TSRMLS_D) {
   /* Bail if not ever enabled */
-  if (!hp_globals.ever_enabled) {
+  if (!hp_globals.ever_enabled || hp_globals.enabled) {
     return;
-  }
-
-  /* Stop profiler if enabled */
-  if (hp_globals.enabled) {
-    hp_stop(TSRMLS_C);
   }
 
   /* Clean up state */
@@ -1601,11 +1526,14 @@ static void hp_end(TSRMLS_D) {
  * hp_begin() and restores the original values.
  */
 static void hp_stop(TSRMLS_D) {
-  int   hp_profile_flag = 1;
+
+	if (!hp_globals.enabled) {
+		return;
+	}
 
   /* End any unfinished calls */
   while (hp_globals.entries) {
-    END_PROFILING(&hp_globals.entries, hp_profile_flag);
+	  end_profiling(&hp_globals.entries);
   }
 
   /* Remove proxies, restore the originals */
@@ -1614,16 +1542,16 @@ static void hp_stop(TSRMLS_D) {
 #else
   zend_execute          = _zend_execute;
 #endif
-  zend_execute_internal = _zend_execute_internal;
+  if (!(hp_globals.uprofiler_flags & XHPROF_FLAGS_NO_BUILTINS)) {
+	  zend_execute_internal = _zend_execute_internal;
+  }
   zend_compile_file     = _zend_compile_file;
   zend_compile_string   = _zend_compile_string;
 
-  /* Restore cpu affinity. */
-  restore_cpu_affinity(&hp_globals.prev_mask);
+  restore_cpu_affinity(&hp_globals.cpu_orig_mask);
 
   CLEAR_IGNORED_FUNC_NAMES
 
-  /* Stop profiling */
   hp_globals.enabled = 0;
 }
 
@@ -1707,4 +1635,3 @@ static inline void hp_array_del(char **name_array) {
     efree(name_array);
   }
 }
-
