@@ -4,7 +4,7 @@ Author: mpal
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 $uprofiler_ignored_functions = array( 'ignored_functions' => 
                                       array('call_user_func',

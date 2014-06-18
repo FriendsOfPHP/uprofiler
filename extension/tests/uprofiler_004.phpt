@@ -4,7 +4,7 @@ Author: Kannan
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 uprofiler_enable();
 
@@ -14,9 +14,9 @@ uprofiler_enable();
 // will not show up in the profiler data. Only the first
 // one should.
 
-include_once dirname(__FILE__).'/uprofiler_004_inc.php';
-include_once dirname(__FILE__).'/uprofiler_004_inc.php';
-include_once dirname(__FILE__).'/uprofiler_004_inc.php';
+include_once dirname(__FILE__).'/uprofiler_004_inc.phpp';
+include_once dirname(__FILE__).'/uprofiler_004_inc.phpp';
+include_once dirname(__FILE__).'/uprofiler_004_inc.phpp';
 
 
 // require_once:
@@ -24,9 +24,9 @@ include_once dirname(__FILE__).'/uprofiler_004_inc.php';
 // will not show up in the profiler data. Only the first
 // one should.
 
-require_once dirname(__FILE__).'/uprofiler_004_require.php';
-require_once dirname(__FILE__).'/uprofiler_004_require.php';
-require_once dirname(__FILE__).'/uprofiler_004_require.php';
+require_once dirname(__FILE__).'/uprofiler_004_require.phpp';
+require_once dirname(__FILE__).'/uprofiler_004_require.phpp';
+require_once dirname(__FILE__).'/uprofiler_004_require.phpp';
 
 $output = uprofiler_disable();
 
@@ -43,15 +43,15 @@ I am in bar()...
 Test for 'include_once' & 'require_once' operation
 main()                                  : ct=       1; wt=*;
 main()==>dirname                        : ct=       6; wt=*;
-main()==>load::%Stests%euprofiler_004_inc.php: ct=       1; wt=*;
-main()==>load::%Stests%euprofiler_004_require.php: ct=       1; wt=*;
-main()==>run_init::%Stests%euprofiler_004_inc.php: ct=       1; wt=*;
-main()==>run_init::%Stests%euprofiler_004_require.php: ct=       1; wt=*;
+main()==>load::%Stests%euprofiler_004_inc.phpp: ct=       1; wt=*;
+main()==>load::%Stests%euprofiler_004_require.phpp: ct=       1; wt=*;
+main()==>run_init::%Stests%euprofiler_004_inc.phpp: ct=       1; wt=*;
+main()==>run_init::%Stests%euprofiler_004_require.phpp: ct=       1; wt=*;
 main()==>uprofiler_disable              : ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_inc.php==>explode: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_inc.php==>foo: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_inc.php==>implode: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_require.php==>bar: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_require.php==>explode: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_require.php==>implode: ct=       1; wt=*;
-run_init::%Stests%euprofiler_004_require.php==>strlen: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.phpp==>explode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.phpp==>foo: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_inc.phpp==>implode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.phpp==>bar: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.phpp==>explode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.phpp==>implode: ct=       1; wt=*;
+run_init::%Stests%euprofiler_004_require.phpp==>strlen: ct=       1; wt=*;

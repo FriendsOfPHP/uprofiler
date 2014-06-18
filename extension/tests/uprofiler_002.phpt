@@ -4,7 +4,7 @@ Author: Kannan
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 // dummy wrapper to test indirect recursion
 function bar($depth, $use_direct_recursion) {

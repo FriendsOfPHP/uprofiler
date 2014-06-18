@@ -4,7 +4,7 @@ Author: mpal
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 function individual_strings($limit) {
   $sum  = 0;

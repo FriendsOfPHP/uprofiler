@@ -4,7 +4,7 @@ Author: Kannan
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 class C {
   private static $_static_attr = "i am a class static";

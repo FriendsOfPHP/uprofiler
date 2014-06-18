@@ -11,7 +11,7 @@ Author: Kannan
 // The test allows for a 25% margin of error.
 //
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 // sleep 10000 microsecs (10 millisecs)
 function sleep_10000_micro() {

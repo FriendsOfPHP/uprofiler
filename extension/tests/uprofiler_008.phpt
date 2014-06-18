@@ -4,7 +4,7 @@ Author: kannan
 --FILE--
 <?php
 
-include_once dirname(__FILE__).'/common.php';
+include_once dirname(__FILE__).'/common.phpp';
 
 function foo() {
    // sleep 0.8 seconds
