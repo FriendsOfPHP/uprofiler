@@ -136,8 +136,8 @@ extern zend_module_entry uprofiler_module_entry;
 
 /* Various XHPROF modes. If you are adding a new mode, register the appropriate
  * callbacks in hp_begin() */
-#define XHPROF_MODE_HIERARCHICAL            1
-#define XHPROF_MODE_SAMPLED                 2
+#define UPROFILER_MODE_HIERARCHICAL            1
+#define UPROFILER_MODE_SAMPLED                 2
 
 /* Hierarchical profiling flags.
  *
@@ -145,18 +145,18 @@ extern zend_module_entry uprofiler_module_entry;
  * The following optional flags can be used to control other aspects of
  * profiling.
  */
-#define XHPROF_FLAGS_NO_BUILTINS   0x0001         /* do not profile builtins */
-#define XHPROF_FLAGS_CPU           0x0002      /* gather CPU times for funcs */
-#define XHPROF_FLAGS_MEMORY        0x0004   /* gather memory usage for funcs */
+#define UPROFILER_FLAGS_NO_BUILTINS   0x0001         /* do not profile builtins */
+#define UPROFILER_FLAGS_CPU           0x0002      /* gather CPU times for funcs */
+#define UPROFILER_FLAGS_MEMORY        0x0004   /* gather memory usage for funcs */
 
-/* Constants for XHPROF_MODE_SAMPLED        */
-#define XHPROF_SAMPLING_INTERVAL       100000      /* In microsecs        */
+/* Constants for UPROFILER_MODE_SAMPLED        */
+#define UPROFILER_SAMPLING_INTERVAL       100000      /* In microsecs        */
 
 /* Constant for ignoring functions, transparent to hierarchical profile */
-#define XHPROF_MAX_IGNORED_FUNCTIONS  256
-#define XHPROF_IGNORED_FUNCTION_FILTER_SIZE                           \
-               ((XHPROF_MAX_IGNORED_FUNCTIONS + 7)/8)
-#define XHPROF_FUNC_HASH_COUNTER 256
+#define UPROFILER_MAX_IGNORED_FUNCTIONS  256
+#define UPROFILER_IGNORED_FUNCTION_FILTER_SIZE                           \
+               ((UPROFILER_MAX_IGNORED_FUNCTIONS + 7)/8)
+#define UPROFILER_FUNC_HASH_COUNTER 256
 
 #if !defined(uint64)
 typedef unsigned long long uint64;
@@ -265,11 +265,11 @@ typedef struct hp_global_t {
   long uprofiler_flags;
 
   /* counter table indexed by hash value of function names. */
-  uint8  func_hash_counters[XHPROF_FUNC_HASH_COUNTER];
+  uint8  func_hash_counters[UPROFILER_FUNC_HASH_COUNTER];
 
   /* Table of ignored function names and their filter */
   char  **ignored_function_names;
-  uint8   ignored_function_filter[XHPROF_IGNORED_FUNCTION_FILTER_SIZE];
+  uint8   ignored_function_filter[UPROFILER_IGNORED_FUNCTION_FILTER_SIZE];
 
 } hp_global_t;
 

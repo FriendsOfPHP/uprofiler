@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Test Include File (load/run_init operations)
+Uprofiler: Test Include File (load/run_init operations)
 Author: Kannan
 --FILE--
 <?php

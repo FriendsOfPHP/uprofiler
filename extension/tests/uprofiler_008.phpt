@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Sampling Mode Test
+Uprofiler: Sampling Mode Test
 Author: kannan
 --FILE--
 <?php

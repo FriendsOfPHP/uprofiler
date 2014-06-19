@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Test excluding call_user_func and similar functions
+Uprofiler: Test excluding call_user_func and similar functions
 Author: mpal
 --FILE--
 <?php
@@ -128,7 +128,7 @@ echo "\n";
 
 // 3: Sanity test ignoring call_user_func_array
 echo "Part 3: Ignore call_user_func_array\n";
-uprofiler_enable(XHPROF_FLAGS_CPU, $uprofiler_ignored_functions);
+uprofiler_enable(UPROFILER_FLAGS_CPU, $uprofiler_ignored_functions);
 test_call_user_func_array('foo_array', $array_arg);
 $output = uprofiler_disable();
 echo "Part 3 output:\n";
@@ -149,7 +149,7 @@ echo "Part 5a: Ignore my_call_user_func_array_safe and strlen\n";
 $tmp1 = $uprofiler_ignored_functions['ignored_functions'];
 $tmp1[] = 'strlen';
 $ignore_strlen_also = array('ignored_functions' => $tmp1);
-uprofiler_enable(XHPROF_FLAGS_MEMORY, $ignore_strlen_also);
+uprofiler_enable(UPROFILER_FLAGS_MEMORY, $ignore_strlen_also);
 test_my_call_user_func_array_safe('foo_array');
 $output = uprofiler_disable();
 echo "Part 5a output:\n";
@@ -158,7 +158,7 @@ echo "\n";
 
 // 5b: Sanity test to not ignore call_user_func variants
 echo "Part 5b: Profile call_user_func_array and my_call_user_func_array_safe\n";
-uprofiler_enable(XHPROF_FLAGS_MEMORY, array());
+uprofiler_enable(UPROFILER_FLAGS_MEMORY, array());
 test_my_call_user_func_array_safe('foo_array');
 $output = uprofiler_disable();
 echo "Part 5b output:\n";
@@ -169,7 +169,7 @@ echo "\n";
 echo "Part 5c: Only ignore call_user_func_array\n";
 $uprofiler_ignored_functions = array('ignored_functions' => 
                                   'my_call_user_func_array_safe');
-uprofiler_enable(XHPROF_FLAGS_MEMORY, $uprofiler_ignored_functions);
+uprofiler_enable(UPROFILER_FLAGS_MEMORY, $uprofiler_ignored_functions);
 test_my_call_user_func_array_safe('foo_array');
 $output = uprofiler_disable();
 echo "Part 5c output:\n";

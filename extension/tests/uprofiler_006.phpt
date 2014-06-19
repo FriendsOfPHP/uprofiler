@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Basic Sampling Test
+Uprofiler: Basic Sampling Test
 Author: mpal
 --FILE--
 <?php

@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Test (direct and indirect) recursive function calls.
+Uprofiler: Test (direct and indirect) recursive function calls.
 Author: Kannan
 --FILE--
 <?php

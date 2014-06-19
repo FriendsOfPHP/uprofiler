@@ -1,5 +1,5 @@
 --TEST--
-XHPRrof: Basic Profiling Test
+Uprofiler: Basic Profiling Test
 Author: Kannan
 --FILE--
 <?php
@@ -28,7 +28,7 @@ print_canonical($output);
 echo "\n";
 
 // 2: Sanity test profiling options
-uprofiler_enable(XHPROF_FLAGS_CPU);
+uprofiler_enable(UPROFILER_FLAGS_CPU);
 foo("this is a test");
 $output = uprofiler_disable();
 
@@ -37,7 +37,7 @@ print_canonical($output);
 echo "\n";
 
 // 3: Sanity test profiling options
-uprofiler_enable(XHPROF_FLAGS_NO_BUILTINS);
+uprofiler_enable(UPROFILER_FLAGS_NO_BUILTINS);
 foo("this is a test");
 $output = uprofiler_disable();
 
@@ -46,7 +46,7 @@ print_canonical($output);
 echo "\n";
 
 // 4: Sanity test profiling options
-uprofiler_enable(XHPROF_FLAGS_MEMORY);
+uprofiler_enable(UPROFILER_FLAGS_MEMORY);
 foo("this is a test");
 $output = uprofiler_disable();
 
@@ -55,7 +55,7 @@ print_canonical($output);
 echo "\n";
 
 // 5: Sanity test combo of profiling options
-uprofiler_enable(XHPROF_FLAGS_MEMORY + XHPROF_FLAGS_CPU);
+uprofiler_enable(UPROFILER_FLAGS_MEMORY + UPROFILER_FLAGS_CPU);
 foo("this is a test");
 $output = uprofiler_disable();
 

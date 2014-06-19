@@ -13,6 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
+ *  Fork edition by Sensiolabs
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -137,14 +139,14 @@ static inline void end_profiling(hp_entry_t **entries)
  */
 
 /**
- * Start XHProf profiling in hierarchical mode.
+ * Start Uprofiler profiling in hierarchical mode.
  *
  * @param  long $flags  flags for hierarchical mode
  * @return void
  * @author kannan
  */
 PHP_FUNCTION(uprofiler_enable) {
-  long  uprofiler_flags = 0;                                    /* XHProf flags */
+  long  uprofiler_flags = 0;                                    /* Uprofiler flags */
   zval *optional_array = NULL;         /* optional array arg: for future use */
 
   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
@@ -162,7 +164,7 @@ PHP_FUNCTION(uprofiler_enable) {
 	  uprofiler_flags = 0;
   }
 
-  if (EXPECTED(hp_begin(XHPROF_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC) == SUCCESS)) {
+  if (EXPECTED(hp_begin(UPROFILER_MODE_HIERARCHICAL, uprofiler_flags, optional_array TSRMLS_CC) == SUCCESS)) {
 	  RETURN_TRUE;
   }
 
@@ -170,11 +172,11 @@ PHP_FUNCTION(uprofiler_enable) {
 }
 
 /**
- * Stops XHProf from profiling in hierarchical mode anymore and returns the
+ * Stops Uprofiler from profiling in hierarchical mode anymore and returns the
  * profile info.
  *
  * @param  void
- * @return array  hash-array of XHProf's profile info
+ * @return array  hash-array of Uprofiler's profile info
  * @author kannan, hzhao
  */
 PHP_FUNCTION(uprofiler_disable) {
@@ -185,7 +187,7 @@ PHP_FUNCTION(uprofiler_disable) {
 }
 
 /**
- * Start XHProf profiling in sampling mode.
+ * Start Uprofiler profiling in sampling mode.
  *
  * @return void
  * @author cjiang
@@ -198,17 +200,17 @@ PHP_FUNCTION(uprofiler_sample_enable) {
 		return;
 	}
 
-	if (EXPECTED(hp_begin(XHPROF_MODE_SAMPLED, 0 /* XHProf flags */, NULL TSRMLS_CC) == SUCCESS)) {
+	if (EXPECTED(hp_begin(UPROFILER_MODE_SAMPLED, 0 /* Uprofiler flags */, NULL TSRMLS_CC) == SUCCESS)) {
 		RETURN_TRUE;
 	}
 }
 
 /**
- * Stops XHProf from profiling in sampling mode anymore and returns the profile
+ * Stops Uprofiler from profiling in sampling mode anymore and returns the profile
  * info.
  *
  * @param  void
- * @return array  hash-array of XHProf's profile info
+ * @return array  hash-array of Uprofiler's profile info
  * @author cjiang
  */
 PHP_FUNCTION(uprofiler_sample_disable) {
@@ -332,16 +334,16 @@ PHP_MINFO_FUNCTION(uprofiler)
  */
 
 static void hp_register_constants(INIT_FUNC_ARGS) {
-  REGISTER_LONG_CONSTANT("XHPROF_FLAGS_NO_BUILTINS",
-                         XHPROF_FLAGS_NO_BUILTINS,
+  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_NO_BUILTINS",
+		  	  	  	  	 UPROFILER_FLAGS_NO_BUILTINS,
                          CONST_CS | CONST_PERSISTENT);
 
-  REGISTER_LONG_CONSTANT("XHPROF_FLAGS_CPU",
-                         XHPROF_FLAGS_CPU,
+  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_CPU",
+		                 UPROFILER_FLAGS_CPU,
                          CONST_CS | CONST_PERSISTENT);
 
-  REGISTER_LONG_CONSTANT("XHPROF_FLAGS_MEMORY",
-                         XHPROF_FLAGS_MEMORY,
+  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_MEMORY",
+		  	  	  	  	 UPROFILER_FLAGS_MEMORY,
                          CONST_CS | CONST_PERSISTENT);
 }
 
@@ -878,7 +880,7 @@ static void hp_sample_check(hp_entry_t **entries  TSRMLS_DC) {
     hp_globals.last_sample_tsc += hp_globals.sampling_interval_tsc;
 
     /* bump last_sample_time - HAS TO BE UPDATED BEFORE calling hp_sample_stack */
-    incr_us_interval(&hp_globals.last_sample_time, XHPROF_SAMPLING_INTERVAL);
+    incr_us_interval(&hp_globals.last_sample_time, UPROFILER_SAMPLING_INTERVAL);
 
     /* sample the stack */
     hp_sample_stack(entries  TSRMLS_CC);
@@ -1092,7 +1094,7 @@ static void clear_frequencies() {
 
 /**
  * ***************************
- * XHPROF DUMMY CALLBACKS
+ * UPROFILER DUMMY CALLBACKS
  * ***************************
  */
 static void hp_mode_dummy_init_cb(TSRMLS_D) { }
@@ -1109,11 +1111,11 @@ static void hp_mode_dummy_endfn_cb(hp_entry_t **entries   TSRMLS_DC) { }
 
 /**
  * ****************************
- * XHPROF COMMON CALLBACKS
+ * UPROFILER COMMON CALLBACKS
  * ****************************
  */
 /**
- * XHPROF universal begin function.
+ * Uprofiler universal begin function.
  * This function is called for all modes before the
  * mode's specific begin_function callback is called.
  *
@@ -1146,7 +1148,7 @@ static void hp_mode_common_beginfn(hp_entry_t **entries,
 }
 
 /**
- * XHPROF universal end function.  This function is called for all modes after
+ * Uprofiler universal end function.  This function is called for all modes after
  * the mode's specific end_function callback is called.
  *
  * @param  hp_entry_t **entries  linked list (stack) of hprof entries
@@ -1160,11 +1162,11 @@ static void hp_mode_common_endfn(hp_entry_t **entries, hp_entry_t *current TSRML
 
 /**
  * *********************************
- * XHPROF INIT MODULE CALLBACKS
+ * UPROFILER INIT MODULE CALLBACKS
  * *********************************
  */
 /**
- * XHPROF_MODE_SAMPLED's init callback
+ * UPROFILER_MODE_SAMPLED's init callback
  *
  * @author veeve
  */
@@ -1180,7 +1182,7 @@ static void hp_mode_sampled_init_cb(TSRMLS_D) {
   /* Find the microseconds that need to be truncated */
   gettimeofday(&hp_globals.last_sample_time, 0);
   now = hp_globals.last_sample_time;
-  hp_trunc_time(&hp_globals.last_sample_time, XHPROF_SAMPLING_INTERVAL);
+  hp_trunc_time(&hp_globals.last_sample_time, UPROFILER_SAMPLING_INTERVAL);
 
   /* Subtract truncated time from last_sample_tsc */
   truncated_us  = get_us_interval(&hp_globals.last_sample_time, &now);
@@ -1192,18 +1194,18 @@ static void hp_mode_sampled_init_cb(TSRMLS_D) {
 
   /* Convert sampling interval to ticks */
   hp_globals.sampling_interval_tsc =
-    get_tsc_from_us(XHPROF_SAMPLING_INTERVAL, cpu_freq);
+    get_tsc_from_us(UPROFILER_SAMPLING_INTERVAL, cpu_freq);
 }
 
 
 /**
  * ************************************
- * XHPROF BEGIN FUNCTION CALLBACKS
+ * UPROFILER BEGIN FUNCTION CALLBACKS
  * ************************************
  */
 
 /**
- * XHPROF_MODE_HIERARCHICAL's begin function callback
+ * UPROFILER_MODE_HIERARCHICAL's begin function callback
  *
  * @author kannan
  */
@@ -1213,12 +1215,12 @@ static void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
   current->tsc_start = cycle_timer();
 
   /* Get CPU usage */
-  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_CPU) {
+  if (hp_globals.uprofiler_flags & UPROFILER_FLAGS_CPU) {
     getrusage(RUSAGE_SELF, &(current->ru_start_hprof));
   }
 
   /* Get memory usage */
-  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_MEMORY) {
+  if (hp_globals.uprofiler_flags & UPROFILER_FLAGS_MEMORY) {
     current->mu_start_hprof  = zend_memory_usage(0 TSRMLS_CC);
     current->pmu_start_hprof = zend_memory_peak_usage(0 TSRMLS_CC);
   }
@@ -1226,7 +1228,7 @@ static void hp_mode_hier_beginfn_cb(hp_entry_t **entries,
 
 
 /**
- * XHPROF_MODE_SAMPLED's begin function callback
+ * UPROFILER_MODE_SAMPLED's begin function callback
  *
  * @author veeve
  */
@@ -1239,12 +1241,12 @@ static void hp_mode_sampled_beginfn_cb(hp_entry_t **entries,
 
 /**
  * **********************************
- * XHPROF END FUNCTION CALLBACKS
+ * UPROFILER END FUNCTION CALLBACKS
  * **********************************
  */
 
 /**
- * XHPROF shared end function callback
+ * UPROFILER shared end function callback
  *
  * @author kannan
  */
@@ -1270,7 +1272,7 @@ static zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
 }
 
 /**
- * XHPROF_MODE_HIERARCHICAL's end function callback
+ * UPROFILER_MODE_HIERARCHICAL's end function callback
  *
  * @author kannan
  */
@@ -1289,7 +1291,7 @@ static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
     return;
   }
 
-  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_CPU) {
+  if (hp_globals.uprofiler_flags & UPROFILER_FLAGS_CPU) {
     /* Get CPU usage */
     getrusage(RUSAGE_SELF, &ru_end);
 
@@ -1301,7 +1303,7 @@ static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
               TSRMLS_CC);
   }
 
-  if (hp_globals.uprofiler_flags & XHPROF_FLAGS_MEMORY) {
+  if (hp_globals.uprofiler_flags & UPROFILER_FLAGS_MEMORY) {
     /* Get Memory usage */
     mu_end  = zend_memory_usage(0 TSRMLS_CC);
     pmu_end = zend_memory_peak_usage(0 TSRMLS_CC);
@@ -1313,7 +1315,7 @@ static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
 }
 
 /**
- * XHPROF_MODE_SAMPLED's end function callback
+ * UPROFILER_MODE_SAMPLED's end function callback
  *
  * @author veeve
  */
@@ -1443,7 +1445,7 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
 
 /**
  * **************************
- * MAIN XHPROF CALLBACKS
+ * MAIN UPROFILER CALLBACKS
  * **************************
  */
 
@@ -1464,11 +1466,11 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC)
 	hp_globals.mode_cb.end_fn_cb   = hp_mode_dummy_endfn_cb;
 
 	switch(level) {
-		case XHPROF_MODE_HIERARCHICAL:
+		case UPROFILER_MODE_HIERARCHICAL:
 			hp_globals.mode_cb.begin_fn_cb = hp_mode_hier_beginfn_cb;
 			hp_globals.mode_cb.end_fn_cb   = hp_mode_hier_endfn_cb;
 		break;
-		case XHPROF_MODE_SAMPLED:
+		case UPROFILER_MODE_SAMPLED:
 			hp_globals.mode_cb.init_cb     = hp_mode_sampled_init_cb;
 			hp_globals.mode_cb.begin_fn_cb = hp_mode_sampled_beginfn_cb;
 			hp_globals.mode_cb.end_fn_cb   = hp_mode_sampled_endfn_cb;
@@ -1498,7 +1500,7 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC)
     zend_execute  = hp_execute;
 #endif
 
-    if (!(hp_globals.uprofiler_flags & XHPROF_FLAGS_NO_BUILTINS)) {
+    if (!(hp_globals.uprofiler_flags & UPROFILER_FLAGS_NO_BUILTINS)) {
     	_zend_execute_internal = zend_execute_internal;
     	zend_execute_internal  = hp_execute_internal;
     }
@@ -1542,7 +1544,7 @@ static void hp_stop(TSRMLS_D) {
 #else
   zend_execute          = _zend_execute;
 #endif
-  if (!(hp_globals.uprofiler_flags & XHPROF_FLAGS_NO_BUILTINS)) {
+  if (!(hp_globals.uprofiler_flags & UPROFILER_FLAGS_NO_BUILTINS)) {
 	  zend_execute_internal = _zend_execute_internal;
   }
   zend_compile_file     = _zend_compile_file;
@@ -1558,7 +1560,7 @@ static void hp_stop(TSRMLS_D) {
 
 /**
  * *****************************
- * XHPROF ZVAL UTILITY FUNCTIONS
+ * UPROFILER ZVAL UTILITY FUNCTIONS
  * *****************************
  */
 
@@ -1629,7 +1631,7 @@ static char **hp_strings_in_zval(zval  *values) {
 static inline void hp_array_del(char **name_array) {
   if (name_array != NULL) {
     size_t i = 0;
-    for(; name_array[i] != NULL && i < XHPROF_MAX_IGNORED_FUNCTIONS; i++) {
+    for(; name_array[i] != NULL && i < UPROFILER_MAX_IGNORED_FUNCTIONS; i++) {
       efree(name_array[i]);
     }
     efree(name_array);
