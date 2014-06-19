@@ -389,5 +389,8 @@ PHP_FUNCTION(uprofiler_enable);
 PHP_FUNCTION(uprofiler_disable);
 PHP_FUNCTION(uprofiler_sample_enable);
 PHP_FUNCTION(uprofiler_sample_disable);
+#if IS_PHP_53
+PHP_FUNCTION(http_response_code);
+#endif
 
 #endif	/* PHP_XHPROF_H */

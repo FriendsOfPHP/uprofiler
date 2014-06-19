@@ -33,6 +33,9 @@
 #include "ext/standard/php_rand.h"
 #include "php_uprofiler.h"
 #include "ext/standard/basic_functions.h"
+#if IS_PHP_53
+#include "main/SAPI.h"
+#endif
 
 /* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_uprofiler_enable, 0, 0, 0)
@@ -48,6 +51,12 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO(arginfo_uprofiler_sample_disable, 0)
 ZEND_END_ARG_INFO()
+
+#if IS_PHP_53
+ZEND_BEGIN_ARG_INFO(arginfo_http_response_code, 0)
+	ZEND_ARG_INFO(0, response_code)
+ZEND_END_ARG_INFO()
+#endif
 /* }}} */
 
 /**
@@ -59,6 +68,9 @@ ZEND_END_ARG_INFO()
 zend_function_entry uprofiler_functions[] = {
   PHP_FE(uprofiler_enable, arginfo_uprofiler_enable)
   PHP_FE(uprofiler_disable, arginfo_uprofiler_disable)
+#if IS_PHP_53
+  PHP_FE(http_response_code, arginfo_http_response_code)
+#endif
   PHP_FE(uprofiler_sample_enable, arginfo_uprofiler_sample_enable)
   PHP_FE(uprofiler_sample_disable, arginfo_uprofiler_sample_disable)
   PHP_FE_END
@@ -219,6 +231,37 @@ PHP_FUNCTION(uprofiler_sample_disable) {
     RETURN_ZVAL(hp_globals.stats_count, 1, 0);
   }
 }
+
+#if IS_PHP_53
+PHP_FUNCTION(http_response_code)
+{
+    long response_code = 0;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &response_code) == FAILURE) {
+        return;
+    }
+
+    if (response_code)
+    {
+        long old_response_code;
+
+        old_response_code = SG(sapi_headers).http_response_code;
+        SG(sapi_headers).http_response_code = response_code;
+
+        if (old_response_code) {
+            RETURN_LONG(old_response_code);
+        }
+
+        RETURN_TRUE;
+    }
+
+    if (!SG(sapi_headers).http_response_code) {
+        RETURN_FALSE;
+    }
+
+    RETURN_LONG(SG(sapi_headers).http_response_code);
+}
+#endif
 
 /**
  * Module init callback.
