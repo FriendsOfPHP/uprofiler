@@ -69,10 +69,12 @@ extern zend_module_entry uprofiler_module_entry;
 #    define CPU_SET(cpu_id, new_mask) \
         (*(new_mask)).affinity_tag = (cpu_id + 1)
 #    define CPU_ZERO(new_mask)                 \
-        (*(new_mask)).affinity_tag = THREAD_AFFINITY_TAG_NULL
+        (*(new_mask)).affinity_tag = THREAD_AFFINITY_TAG_NULL; return 0;
 #   define SET_AFFINITY(pid, size, mask)       \
         thread_policy_set(mach_thread_self(), THREAD_AFFINITY_POLICY, mask, \
                           THREAD_AFFINITY_POLICY_COUNT)
+#define GET_AFFINITY(pid, size, mask) CPU_ZERO(mask)
+
 #elif PHP_WIN32
 /*
  * Patch for compiling in Win32/64
@@ -264,7 +266,7 @@ typedef struct hp_global_t {
   /* The number of logical CPUs this machine has. */
   uint32 cpu_num;
 
-  cpu_set_t cpu_orig_mask;
+  cpu_set_t cpu_prev_mask;
 
   /* The cpu id current process is bound to. (default 0) */
   uint32 cur_cpu_id;

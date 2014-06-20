@@ -299,15 +299,6 @@ PHP_MINIT_FUNCTION(uprofiler)
   hp_globals.cpu_num = sysinfo.dwNumberOfProcessors;
 #endif
 
-  /* Get the cpu affinity mask. */
-#ifndef __APPLE__
-  if (GET_AFFINITY(0, sizeof(cpu_set_t), &hp_globals.cpu_orig_mask) < 0) {
-    return FAILURE;
-  }
-#else
-  CPU_ZERO(&(hp_globals.cpu_orig_mask));
-#endif
-
 	if (UNEXPECTED(get_all_cpu_frequencies() == FAILURE)) {
 		return FAILURE;
 	}
@@ -315,8 +306,6 @@ PHP_MINIT_FUNCTION(uprofiler)
 	if (!BG(mt_rand_is_seeded)) {
 		php_mt_srand(GENERATE_SEED() TSRMLS_CC);
 	}
-
-	restore_cpu_affinity(&hp_globals.cpu_orig_mask);
 
 	return SUCCESS;
 }
@@ -496,12 +485,6 @@ int hp_init_profiler_state(char level TSRMLS_DC) {
     hp_globals.entries       = NULL;
   }
   hp_globals.profiler_level = level;
-
-  if (hp_globals.cpu_frequencies == NULL) {
-    if (UNEXPECTED(get_all_cpu_frequencies() == FAILURE)) {
-    	return FAILURE;
-    }
-  }
 
   /* bind to a random cpu so that we can use rdtsc instruction. */
   if (UNEXPECTED(bind_to_cpu((int) (php_rand() % (long)hp_globals.cpu_num)) == FAILURE)) {
@@ -1012,6 +995,9 @@ static int bind_to_cpu(uint32 cpu_id) {
   CPU_ZERO(&new_mask);
   CPU_SET(cpu_id, &new_mask);
 
+  if (GET_AFFINITY(0, sizeof(cpu_set_t), &hp_globals.cpu_prev_mask) < 0) {
+	  return FAILURE;
+  }
   if (SET_AFFINITY(0, sizeof(cpu_set_t), &new_mask) < 0) {
     return FAILURE;
   }
@@ -1126,6 +1112,10 @@ static int get_all_cpu_frequencies() {
       return FAILURE;
     }
     hp_globals.cpu_frequencies[id] = frequency;
+
+    if (restore_cpu_affinity(&hp_globals.cpu_prev_mask) == FAILURE) { /* bind_to_cpu() changes the current affinity */
+      return FAILURE;
+    }
   }
 
   return SUCCESS;
@@ -1159,7 +1149,6 @@ static void clear_frequencies() {
     pefree(hp_globals.cpu_frequencies, 1);
     hp_globals.cpu_frequencies = NULL;
   }
-  restore_cpu_affinity(&hp_globals.cpu_orig_mask);
 }
 
 
@@ -1630,7 +1619,7 @@ static void hp_stop(TSRMLS_D) {
   zend_compile_file     = _zend_compile_file;
   zend_compile_string   = _zend_compile_string;
 
-  restore_cpu_affinity(&hp_globals.cpu_orig_mask);
+  restore_cpu_affinity(&hp_globals.cpu_prev_mask);
 
   CLEAR_IGNORED_FUNC_NAMES
 
