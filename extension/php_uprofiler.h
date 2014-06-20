@@ -150,7 +150,7 @@ extern zend_module_entry uprofiler_module_entry;
 #define UPROFILER_FLAGS_NO_BUILTINS    0x0001         /* do not profile builtins */
 #define UPROFILER_FLAGS_CPU            0x0002      /* gather CPU times for funcs */
 #define UPROFILER_FLAGS_MEMORY         0x0004   /* gather memory usage for funcs */
-#define UPROFILER_FLAGS_FUNCTION_INFOS 0x0008   /* gather more function informations */
+#define UPROFILER_FLAGS_FUNCTION_INFO  0x0008   /* gather more function informations */
 
 /* Constants for UPROFILER_MODE_SAMPLED        */
 #define UPROFILER_SAMPLING_INTERVAL       100000      /* In microsecs        */

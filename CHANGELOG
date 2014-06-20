@@ -7,7 +7,7 @@ CHANGELOG
  * Performance improvements
  * Fix some leaks
  * http_response_code() function for PHP5.3
- * UPROFILER_FLAGS_FUNCTION_INFOS for user function filename definition and lineno
+ * UPROFILER_FLAGS_FUNCTION_INFO for user function filename definition and lineno
  * Notice when double activation is detected
 
 0.10 (2013-XX-XX)

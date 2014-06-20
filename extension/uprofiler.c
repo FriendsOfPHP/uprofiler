@@ -394,8 +394,8 @@ static void hp_register_constants(INIT_FUNC_ARGS) {
 		  	  	  	  	 UPROFILER_FLAGS_MEMORY,
                          CONST_CS | CONST_PERSISTENT);
 
-  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_FUNCTION_INFOS",
-		  	  	  	  	 UPROFILER_FLAGS_FUNCTION_INFOS,
+  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_FUNCTION_INFO",
+		  	  	  	  	 UPROFILER_FLAGS_FUNCTION_INFO,
                          CONST_CS | CONST_PERSISTENT);
 }
 
@@ -741,7 +741,7 @@ static up_function *hp_get_function_name(void) {
 
       ret->zend_function_type = curr_func->type;
 
-      if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFOS) && (ret->zend_function_type & ZEND_USER_FUNCTION)) {
+      if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFO) && (ret->zend_function_type & ZEND_USER_FUNCTION)) {
     	  ret->filename = curr_func->op_array.filename;
     	  ret->lineno   = curr_func->op_array.line_start;
       }
@@ -1373,7 +1373,7 @@ static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
     hp_inc_count(counts, "pmu", pmu_end - top->pmu_start_hprof  TSRMLS_CC);
   }
 
-  if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFOS) && (top->function->zend_function_type & ZEND_USER_FUNCTION)) {
+  if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFO) && (top->function->zend_function_type & ZEND_USER_FUNCTION)) {
 	add_assoc_string(counts, "filename", (char *)top->function->filename, 1);
 	add_assoc_long(counts, "lineno", top->function->lineno);
   }
