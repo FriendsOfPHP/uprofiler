@@ -18,7 +18,7 @@
 #ifndef PHP_XHPROF_H
 #define PHP_XHPROF_H
 
-#define	PHP_UPROFILER_VERSION "0.10"
+#define	PHP_UPROFILER_VERSION "0.11"
 
 extern zend_module_entry uprofiler_module_entry;
 #define phpext_uprofiler_ptr &uprofiler_module_entry
@@ -96,7 +96,7 @@ extern zend_module_entry uprofiler_module_entry;
 		hp_globals.ignored_function_names = NULL; \
 } while (0);
 
-#define BEGIN_PROFILING(function_name) begin_profiling(&hp_globals.entries, function_name)
+#define BEGIN_PROFILING(function) begin_profiling(&hp_globals.entries, function)
 #define END_PROFILING() end_profiling(&hp_globals.entries)
 
 
@@ -145,9 +145,10 @@ extern zend_module_entry uprofiler_module_entry;
  * The following optional flags can be used to control other aspects of
  * profiling.
  */
-#define UPROFILER_FLAGS_NO_BUILTINS   0x0001         /* do not profile builtins */
-#define UPROFILER_FLAGS_CPU           0x0002      /* gather CPU times for funcs */
-#define UPROFILER_FLAGS_MEMORY        0x0004   /* gather memory usage for funcs */
+#define UPROFILER_FLAGS_NO_BUILTINS    0x0001         /* do not profile builtins */
+#define UPROFILER_FLAGS_CPU            0x0002      /* gather CPU times for funcs */
+#define UPROFILER_FLAGS_MEMORY         0x0004   /* gather memory usage for funcs */
+#define UPROFILER_FLAGS_FUNCTION_INFOS 0x0008   /* gather more function informations */
 
 /* Constants for UPROFILER_MODE_SAMPLED        */
 #define UPROFILER_SAMPLING_INTERVAL       100000      /* In microsecs        */
@@ -175,6 +176,13 @@ typedef unsigned char uint8;
  */
 
 
+typedef struct up_function {
+	char       *name;
+	const char *filename;
+	zend_uint  lineno;
+	int zend_function_type;
+} up_function;
+
 /* XHProf maintains a stack of entries being profiled. The memory for the entry
  * is passed by the layer that invokes BEGIN_PROFILING(), e.g. the hp_execute()
  * function. Often, this is just C-stack memory.
@@ -183,7 +191,7 @@ typedef unsigned char uint8;
  * profile operation, recursion depth, and the name of the function being
  * profiled. */
 typedef struct hp_entry_t {
-  char                   *name_hprof;                       /* function name */
+  up_function             *function;                       /* function name */
   int                     rlvl_hprof;        /* recursion level for function */
   uint64                  tsc_start;         /* start value for TSC counter  */
   long int                mu_start_hprof;                    /* memory usage */
@@ -292,7 +300,8 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC);
 static void hp_stop(TSRMLS_D);
 static void hp_end(TSRMLS_D);
 int hp_init_profiler_state(char level TSRMLS_DC);
-
+static void up_function_free(up_function *f);
+static up_function *up_function_create(char *function_name);
 
 static inline uint64 cycle_timer();
 static double get_cpu_frequency();
@@ -308,7 +317,7 @@ static void incr_us_interval(struct timeval *start, uint64 incr);
 static inline uint64 get_tsc_from_us(uint64 usecs, double cpu_frequency);
 
 static void hp_get_ignored_functions_from_arg(zval *args);
-static char *hp_get_function_name(void);
+static up_function *hp_get_function_name(void);
 static size_t hp_get_entry_name(hp_entry_t  *entry, char *result_buf, size_t result_len);
 static int  hp_ignore_entry_work(uint8 hash_code, char *curr_func);
 
@@ -338,7 +347,7 @@ static zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
 static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
 static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
 
-static inline void begin_profiling(hp_entry_t **entries, char *function_name);
+static inline void begin_profiling(hp_entry_t **entries, up_function *function_name);
 static inline void end_profiling(hp_entry_t **entries);
 
 /**

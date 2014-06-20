@@ -105,21 +105,21 @@ PHP_INI_END()
 /* Init module */
 ZEND_GET_MODULE(uprofiler)
 
-static inline void begin_profiling(hp_entry_t **entries, char *function_name)
+static inline void begin_profiling(hp_entry_t **entries, up_function *upfunction)
 {
 	char profile_curr = 0;
-	uint8 hash_code   = hp_inline_hash(function_name);
-	profile_curr      = !hp_ignore_entry(hash_code, function_name);
+	uint8 hash_code   = hp_inline_hash(upfunction->name);
+	profile_curr      = !hp_ignore_entry(hash_code, upfunction->name);
 	if (profile_curr) {
 		hp_entry_t *cur_entry = hp_fast_alloc_hprof_entry();
-		(cur_entry)->hash_code = hash_code;
-		(cur_entry)->name_hprof = function_name;
-		(cur_entry)->prev_hprof = *entries;
+		cur_entry->hash_code = hash_code;
+		cur_entry->function = upfunction;
+		cur_entry->prev_hprof = *entries;
 		hp_mode_common_beginfn(entries, cur_entry TSRMLS_CC);
 		hp_globals.mode_cb.begin_fn_cb(entries, cur_entry TSRMLS_CC);
 		*entries = cur_entry;
 	} else {
-		efree((function_name));
+		up_function_free(upfunction);
 	}
 }
 
@@ -128,12 +128,11 @@ static inline void end_profiling(hp_entry_t **entries)
 	if (*entries) {
 		hp_entry_t *cur_entry;
 		hp_globals.mode_cb.end_fn_cb(entries TSRMLS_CC);
-		cur_entry = *(entries);
+		cur_entry = *entries;
 		hp_mode_common_endfn(entries, cur_entry TSRMLS_CC);
 		*entries = (*entries)->prev_hprof;
-		if (cur_entry->name_hprof) {
-			efree(cur_entry->name_hprof);
-			cur_entry->name_hprof = NULL;
+		if (cur_entry->function) {
+			up_function_free(cur_entry->function);
 		}
 		memset(cur_entry, 0, sizeof(*cur_entry));
 		cur_entry->prev_hprof = hp_globals.entry_free_list;
@@ -141,8 +140,25 @@ static inline void end_profiling(hp_entry_t **entries)
 	}
 }
 
+static void up_function_free(up_function *f)
+{
+	if (f->name) {
+		efree(f->name);
+	}
+	efree(f);
+}
 
+static up_function *up_function_create(char *function_name)
+{
+	up_function *f = NULL;
 
+	f = ecalloc(1, sizeof(up_function));
+	if (function_name) {
+		f->name = function_name;
+	}
+
+	return f;
+}
 
 /**
  * **********************************
@@ -388,6 +404,10 @@ static void hp_register_constants(INIT_FUNC_ARGS) {
   REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_MEMORY",
 		  	  	  	  	 UPROFILER_FLAGS_MEMORY,
                          CONST_CS | CONST_PERSISTENT);
+
+  REGISTER_LONG_CONSTANT("UPROFILER_FLAGS_FUNCTION_INFOS",
+		  	  	  	  	 UPROFILER_FLAGS_FUNCTION_INFOS,
+                         CONST_CS | CONST_PERSISTENT);
 }
 
 /**
@@ -552,12 +572,12 @@ static size_t hp_get_entry_name(hp_entry_t  *entry,
   if (entry->rlvl_hprof) {
     snprintf(result_buf, result_len,
              "%s@%d",
-             entry->name_hprof, entry->rlvl_hprof);
+             entry->function->name, entry->rlvl_hprof);
   }
   else {
     snprintf(result_buf, result_len,
              "%s",
-             entry->name_hprof);
+             entry->function->name);
   }
 
   /* Force null-termination at MAX */
@@ -684,12 +704,12 @@ static const char *hp_get_base_filename(const char *filename) {
  *
  * @author kannan, hzhao
  */
-static char *hp_get_function_name(void) {
+static up_function *hp_get_function_name(void) {
   zend_execute_data *data;
   const char        *func = NULL;
   const char        *cls = NULL;
   zend_uint         cls_name_length;
-  char              *ret = NULL;
+  up_function       *ret = NULL;
   size_t            len;
   zend_function     *curr_func = NULL;
 
@@ -703,6 +723,8 @@ static char *hp_get_function_name(void) {
 
     /* extract function name from the meta info */
     func = curr_func->common.function_name;
+
+    ret = up_function_create(NULL);
 
     if (func) {
       /* previously, the order of the tests in the "if" below was
@@ -722,16 +744,23 @@ static char *hp_get_function_name(void) {
 
       if (cls) {
         if (curr_func->common.fn_flags & ZEND_ACC_CLOSURE) {
-            spprintf(&ret, 0, "%s::{closure}/%d-%d", cls, curr_func->op_array.line_start, curr_func->op_array.line_end);
+            spprintf(&ret->name, 0, "%s::{closure}/%d-%d", cls, curr_func->op_array.line_start, curr_func->op_array.line_end);
         } else {
-            spprintf(&ret, 0, "%s::%s", cls, func);
+            spprintf(&ret->name, 0, "%s::%s", cls, func);
         }
       } else {
           if (curr_func->common.fn_flags & ZEND_ACC_CLOSURE) {
-              spprintf(&ret, 0, "{closure}::%s/%d-%d", curr_func->op_array.filename, curr_func->op_array.line_start, curr_func->op_array.line_end);
+              spprintf(&ret->name, 0, "{closure}::%s/%d-%d", curr_func->op_array.filename, curr_func->op_array.line_start, curr_func->op_array.line_end);
           } else {
-              spprintf(&ret, 0, "%s", func);
+              spprintf(&ret->name, 0, "%s", func);
           }
+      }
+
+      ret->zend_function_type = curr_func->type;
+
+      if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFOS) && (ret->zend_function_type & ZEND_USER_FUNCTION)) {
+    	  ret->filename = curr_func->op_array.filename;
+    	  ret->lineno   = curr_func->op_array.line_start;
       }
 
     } else {
@@ -745,8 +774,7 @@ static char *hp_get_function_name(void) {
       size_t   len;
       filename = hp_get_base_filename((curr_func->op_array).filename);
       len      = sizeof("run_init::") + strlen(filename);
-      ret      = (char *)emalloc(len);
-      snprintf(ret, len, "run_init::%s", filename);
+      spprintf(&ret->name, len, "run_init::%s", filename);
     }
   }
   return ret;
@@ -1178,7 +1206,7 @@ static void hp_mode_common_beginfn(hp_entry_t **entries,
   if (hp_globals.func_hash_counters[current->hash_code] > 0) {
     /* Find this symbols recurse level */
     for(p = (*entries); p; p = p->prev_hprof) {
-      if (!strcmp(current->name_hprof, p->name_hprof)) {
+      if (!strcmp(current->function->name, p->function->name)) {
         recurse_level = (p->rlvl_hprof) + 1;
         break;
       }
@@ -1355,6 +1383,11 @@ static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
     hp_inc_count(counts, "mu",  mu_end - top->mu_start_hprof    TSRMLS_CC);
     hp_inc_count(counts, "pmu", pmu_end - top->pmu_start_hprof  TSRMLS_CC);
   }
+
+  if ((hp_globals.uprofiler_flags & UPROFILER_FLAGS_FUNCTION_INFOS) && (top->function->zend_function_type & ZEND_USER_FUNCTION)) {
+	add_assoc_string(counts, "filename", (char *)top->function->filename, 1);
+	add_assoc_long(counts, "lineno", top->function->lineno);
+  }
 }
 
 /**
@@ -1374,7 +1407,7 @@ ZEND_DLEXPORT void hp_execute_ex (zend_execute_data *execute_data TSRMLS_DC) {
 #else
   ZEND_DLEXPORT void hp_execute (zend_op_array *ops TSRMLS_DC) {
 #endif
-  char          *func = NULL;
+  up_function *func = NULL;
 
   func = hp_get_function_name();
   if (!func) {
@@ -1408,7 +1441,7 @@ ZEND_DLEXPORT void hp_execute_internal(zend_execute_data *execute_data,
 #endif
 
   zend_execute_data *current_data;
-  char             *func = NULL;
+  up_function       *func = NULL;
 
   current_data = EG(current_execute_data);
   func = hp_get_function_name();
@@ -1457,12 +1490,14 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
                                              int type TSRMLS_DC) {
 
   const char     *filename;
-  char           *func;
+  up_function    *func;
+  char           *func_name;
   int             len;
   zend_op_array  *ret;
 
   filename = hp_get_base_filename(file_handle->filename);
-  spprintf(&func, 0, "load::%s", filename);
+  spprintf(&func_name, 0, "load::%s", filename);
+  func = up_function_create(func_name);
 
   BEGIN_PROFILING(func);
   ret = _zend_compile_file(file_handle, type TSRMLS_CC);
@@ -1473,11 +1508,13 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
 
 ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filename TSRMLS_DC) {
 
-    char          *func;
-    int            len;
+    up_function   *func;
+    char          *func_name;
+    int           len;
     zend_op_array *ret;
 
-    spprintf(&func, 0, "eval::%s", filename);
+    spprintf(&func_name, 0, "eval::%s", filename);
+    func = up_function_create(func_name);
 
     BEGIN_PROFILING(func);
     ret = _zend_compile_string(source_string, filename TSRMLS_CC);
@@ -1548,7 +1585,7 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC)
     	zend_execute_internal  = hp_execute_internal;
     }
 
-    BEGIN_PROFILING(estrdup(ROOT_SYMBOL));
+    BEGIN_PROFILING(up_function_create(estrdup(ROOT_SYMBOL)));
 
     return SUCCESS;
 }
