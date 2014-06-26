@@ -20,7 +20,7 @@
  *
  */
 
-// Supported ouput format
+// Supported output format
 $uprofiler_legal_image_types = array(
     "jpg" => 1,
     "gif" => 1,
@@ -54,7 +54,7 @@ function uprofiler_http_header($name, $value) {
 }
 
 /**
- * Genearte and send MIME header for the output image to client browser.
+ * Generate and send MIME header for the output image to client browser.
  *
  * @author cjiang
  */
@@ -74,6 +74,7 @@ function uprofiler_generate_mime_header($type, $length) {
       break;
     case 'ps':
       $mime = 'application/postscript';
+      break;
     default:
       $mime = false;
   }
@@ -173,7 +174,7 @@ function uprofiler_generate_dot_script($raw_data, $threshold, $source, $page,
   $max_fontsize = 35;
   $max_sizing_ratio = 20;
 
-  $totals;
+  $totals = array();
 
   if ($left === null) {
     // init_metrics($raw_data, null, null);
@@ -462,7 +463,7 @@ function uprofiler_get_content_by_run($uprofiler_runs_impl, $run_id, $type,
  *              $uprofiler_legal_image_types.
  * @param threshold, float, the threshold value [0,1). The functions in the
  *                   raw_data whose exclusive wall times ratio are below the
- *                   threshold will be filtered out and won't apprear in the
+ *                   threshold will be filtered out and won't appear in the
  *                   generated image.
  * @param func, string, the focus function.
  * @param bool, does this run correspond to a PHProfLive run or a dev run?

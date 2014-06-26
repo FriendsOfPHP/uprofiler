@@ -629,19 +629,19 @@ function print_td_num($num, $fmt_func, $bold=false, $attributes=null) {
 }
 
 /**
- * Prints a <td> element with a pecentage.
+ * Prints a <td> element with a percentage.
  */
-function print_td_pct($numer, $denom, $bold=false, $attributes=null) {
+function print_td_pct($number, $denom, $bold=false, $attributes=null) {
   global $vbar;
   global $vbbar;
   global $diff_mode;
 
-  $class = get_print_class($numer, $bold);
+  $class = get_print_class($number, $bold);
 
   if ($denom == 0) {
     $pct = "N/A%";
   } else {
-    $pct = uprofiler_percent_format($numer / abs($denom));
+    $pct = uprofiler_percent_format($number / abs($denom));
   }
 
   print("<td $attributes $class>$pct</td>\n");
