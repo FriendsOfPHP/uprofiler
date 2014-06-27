@@ -129,7 +129,7 @@ extern zend_module_entry uprofiler_module_entry;
  * **********************
  */
 
-/* Fictitious function name to represent top of the call tree. The paranthesis
+/* Fictitious function name to represent top of the call tree. The parenthesis
  * in the name is to ensure we don't conflict with user function names.  */
 #define ROOT_SYMBOL                "main()"
 
@@ -259,7 +259,7 @@ typedef struct hp_global_t {
   /* This array is used to store cpu frequencies for all available logical
    * cpus.  For now, we assume the cpu frequencies will not change for power
    * saving or other reasons. If we need to worry about that in the future, we
-   * can use a periodical timer to re-calculate this arrary every once in a
+   * can use a periodical timer to re-calculate this array every once in a
    * while (for example, every 1 or 5 seconds). */
   double *cpu_frequencies;
 
