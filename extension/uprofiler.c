@@ -105,7 +105,7 @@ PHP_INI_END()
 /* Init module */
 ZEND_GET_MODULE(uprofiler)
 
-static inline void begin_profiling(hp_entry_t **entries, up_function *upfunction)
+static inline void begin_profiling(hp_entry_t **entries, up_function *upfunction TSRMLS_DC)
 {
 	char profile_curr = 0;
 	uint8 hash_code   = hp_inline_hash(upfunction->name);
@@ -119,11 +119,11 @@ static inline void begin_profiling(hp_entry_t **entries, up_function *upfunction
 		hp_globals.mode_cb.begin_fn_cb(entries, cur_entry TSRMLS_CC);
 		*entries = cur_entry;
 	} else {
-		up_function_free(upfunction);
+		up_function_free(upfunction TSRMLS_CC);
 	}
 }
 
-static inline void end_profiling(hp_entry_t **entries)
+static inline void end_profiling(hp_entry_t **entries TSRMLS_DC)
 {
 	if (*entries) {
 		hp_entry_t *cur_entry;
@@ -132,7 +132,7 @@ static inline void end_profiling(hp_entry_t **entries)
 		hp_mode_common_endfn(entries, cur_entry TSRMLS_CC);
 		*entries = (*entries)->prev_hprof;
 		if (cur_entry->function) {
-			up_function_free(cur_entry->function);
+			up_function_free(cur_entry->function TSRMLS_CC);
 		}
 		memset(cur_entry, 0, sizeof(*cur_entry));
 		cur_entry->prev_hprof = hp_globals.entry_free_list;
@@ -140,7 +140,7 @@ static inline void end_profiling(hp_entry_t **entries)
 	}
 }
 
-static void up_function_free(up_function *f)
+static void up_function_free(up_function *f TSRMLS_DC)
 {
 	if (f->name) {
 		efree(f->name);
@@ -331,7 +331,7 @@ PHP_RINIT_FUNCTION(uprofiler)
  * Request shutdown callback. Stop profiling and return.
  */
 PHP_RSHUTDOWN_FUNCTION(uprofiler) {
-    hp_stop();
+    hp_stop(TSRMLS_C);
 	hp_end(TSRMLS_C);
   /* free any remaining items in the free list */
   hp_free_the_free_list();
@@ -487,7 +487,7 @@ int hp_init_profiler_state(char level TSRMLS_DC) {
   hp_globals.profiler_level = level;
 
   /* bind to a random cpu so that we can use rdtsc instruction. */
-  if (UNEXPECTED(bind_to_cpu((int) (php_rand() % (long)hp_globals.cpu_num)) == FAILURE)) {
+  if (UNEXPECTED(bind_to_cpu((int) (php_rand(TSRMLS_C) % (long)hp_globals.cpu_num)) == FAILURE)) {
 	  return FAILURE;
   }
 
@@ -1604,7 +1604,7 @@ static void hp_stop(TSRMLS_D) {
 
   /* End any unfinished calls */
   while (hp_globals.entries) {
-	  end_profiling(&hp_globals.entries);
+	  end_profiling(&hp_globals.entries TSRMLS_CC);
   }
 
   /* Remove proxies, restore the originals */

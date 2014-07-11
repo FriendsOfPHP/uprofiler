@@ -98,7 +98,7 @@ extern zend_module_entry uprofiler_module_entry;
 		hp_globals.ignored_function_names = NULL; \
 } while (0);
 
-#define BEGIN_PROFILING(function) begin_profiling(&hp_globals.entries, function)
+#define BEGIN_PROFILING(function) begin_profiling(&hp_globals.entries, function BEGIN_PROFILING)
 #define END_PROFILING() end_profiling(&hp_globals.entries)
 
 
@@ -302,7 +302,7 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC);
 static void hp_stop(TSRMLS_D);
 static void hp_end(TSRMLS_D);
 int hp_init_profiler_state(char level TSRMLS_DC);
-static void up_function_free(up_function *f);
+static void up_function_free(up_function *f TSRMLS_DC);
 static up_function *up_function_create(char *function_name);
 
 static inline uint64 cycle_timer();
@@ -349,8 +349,8 @@ static zval * hp_mode_shared_endfn_cb(hp_entry_t *top,
 static void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
 static void hp_mode_sampled_endfn_cb(hp_entry_t **entries  TSRMLS_DC);
 
-static inline void begin_profiling(hp_entry_t **entries, up_function *function_name);
-static inline void end_profiling(hp_entry_t **entries);
+static inline void begin_profiling(hp_entry_t **entries, up_function *function_name TSRMLS_DC);
+static inline void end_profiling(hp_entry_t **entries TSRMLS_DC);
 
 /**
  * ***********************
