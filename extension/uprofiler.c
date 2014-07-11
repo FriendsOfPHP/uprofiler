@@ -693,7 +693,6 @@ static up_function *hp_get_function_name(void) {
   const char        *cls = NULL;
   zend_uint         cls_name_length;
   up_function       *ret = NULL;
-  size_t            len;
   zend_function     *curr_func = NULL;
 
   TSRMLS_FETCH();
@@ -1484,7 +1483,6 @@ ZEND_DLEXPORT zend_op_array* hp_compile_file(zend_file_handle *file_handle,
   const char     *filename;
   up_function    *func;
   char           *func_name;
-  int             len;
   zend_op_array  *ret;
 
   filename = hp_get_base_filename(file_handle->filename);
@@ -1502,7 +1500,6 @@ ZEND_DLEXPORT zend_op_array* hp_compile_string(zval *source_string, char *filena
 
     up_function   *func;
     char          *func_name;
-    int           len;
     zend_op_array *ret;
 
     spprintf(&func_name, 0, "eval::%s", filename);
