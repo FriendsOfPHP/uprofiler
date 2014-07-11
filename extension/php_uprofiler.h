@@ -98,8 +98,8 @@ extern zend_module_entry uprofiler_module_entry;
 		hp_globals.ignored_function_names = NULL; \
 } while (0);
 
-#define BEGIN_PROFILING(function) begin_profiling(&hp_globals.entries, function BEGIN_PROFILING)
-#define END_PROFILING() end_profiling(&hp_globals.entries)
+#define BEGIN_PROFILING(function) begin_profiling(&hp_globals.entries, function TSRMLS_CC)
+#define END_PROFILING() end_profiling(&hp_globals.entries TSRMLS_CC)
 
 
 /**
