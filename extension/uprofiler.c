@@ -991,6 +991,9 @@ static inline uint64 cycle_timer() {
  */
 static int bind_to_cpu(uint32 cpu_id) {
   cpu_set_t new_mask;
+#ifdef PHP_WIN32
+  cpu_set_t s_mask;
+#endif
 
   CPU_ZERO(&new_mask);
   CPU_SET(cpu_id, &new_mask);
