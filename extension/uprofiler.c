@@ -732,7 +732,7 @@ static up_function *hp_get_function_name(void) {
         }
       } else {
           if (curr_func->common.fn_flags & ZEND_ACC_CLOSURE) {
-              spprintf(&ret->name, 0, "{closure}::%s/%d-%d", curr_func->op_array.filename, curr_func->op_array.line_start, curr_func->op_array.line_end);
+              spprintf(&ret->name, 0, "{closure}::%s/%d-%d", hp_get_base_filename(curr_func->op_array.filename), curr_func->op_array.line_start, curr_func->op_array.line_end);
           } else {
               spprintf(&ret->name, 0, "%s", func);
           }
