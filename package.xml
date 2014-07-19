@@ -33,10 +33,10 @@ A lightweight profiler for PHP
   <email>haiping@php.net</email>
   <active>no</active>
  </developer>
- <date>2009-03-28</date>
+ <date>2014-07-19</date>
  <version>
-  <release>0.9.2</release>
-  <api>0.9.2</api>
+  <release>0.11.0</release>
+  <api>0.11.0</api>
  </version>
  <stability>
   <release>beta</release>
