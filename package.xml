@@ -13,25 +13,25 @@ A lightweight profiler for PHP
   <name>Kannan Muthukkaruppan</name>
   <user>kannan</user>
   <email>kannan@php.net</email>
-  <active>yes</active>
+  <active>no</active>
  </lead>
  <developer>
   <name>Venkat Venkataramani</name>
   <user>veeve</user>
   <email>veeve@php.net</email>
-  <active>yes</active>
+  <active>no</active>
  </developer>
  <lead>
   <name>Changhao Jiang</name>
   <user>cjiang</user>
   <email>cjiang@php.net</email>
-  <active>yes</active>
+  <active>no</active>
  </lead>
  <developer>
   <name>Haiping Zhao</name>
   <user>haiping</user>
   <email>haiping@php.net</email>
-  <active>yes</active>
+  <active>no</active>
  </developer>
  <date>2009-03-28</date>
  <version>
@@ -44,27 +44,25 @@ A lightweight profiler for PHP
  </stability>
  <license uri="http://www.apache.org/licenses/LICENSE-2.0.html">Apache 2.0</license>
  <notes>
+     n/a
  </notes>
  <contents>
   <dir name="/">
     <file role="doc" name="CHANGELOG" />
     <file role="doc" name="CREDITS" />
-    <file role="doc" name="README" />
+    <file role="doc" name="README.rst" />
     <file role="doc" name="LICENSE" />
-    <dir name="examples">
-      <file role="doc" name="sample.php"/>
-    </dir>
     <dir name="extension">
       <file role="src" name="config.m4"/>
       <file role="src" name="php_uprofiler.h"/>
       <file role="src" name="uprofiler.c"/>
       <dir name="tests">
-        <file role="test" name="common.php" />
+        <file role="test" name="common.phpp" />
         <file role="test" name="uprofiler_001.phpt" />
         <file role="test" name="uprofiler_002.phpt" />
         <file role="test" name="uprofiler_003.phpt" />
-        <file role="test" name="uprofiler_004_inc.php" />
-        <file role="test" name="uprofiler_004_require.php" />
+        <file role="test" name="uprofiler_004_inc.phpp" />
+        <file role="test" name="uprofiler_004_require.phpp" />
         <file role="test" name="uprofiler_004.phpt" />
         <file role="test" name="uprofiler_005.phpt" />
         <file role="test" name="uprofiler_006.phpt" />
@@ -78,14 +76,6 @@ A lightweight profiler for PHP
       <file role="php" name="typeahead.php"/>
       <dir name="css">
         <file role="src" name="uprofiler.css"/>
-      </dir>
-      <dir name="docs">
-        <file role="doc" name="index.html"/>
-        <file role="doc" name="sample-callgraph-image.jpg"/>
-        <file role="doc" name="sample-diff-report-flat-view.jpg"/>
-        <file role="doc" name="sample-diff-report-parent-child-view.jpg"/>
-        <file role="doc" name="sample-flat-view.jpg"/>
-        <file role="doc" name="sample-parent-child-view.jpg"/>
       </dir>
       <dir name="jquery">
         <file role="src" name="indicator.gif"/>
