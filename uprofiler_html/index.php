@@ -15,15 +15,15 @@
 //
 
 //
-// XHProf: A Hierarchical Profiler for PHP
+// uprofiler: A Hierarchical Profiler for PHP
 //
-// XHProf has two components:
+// uprofiler has two components:
 //
 //  * This module is the UI/reporting component, used
-//    for viewing results of XHProf runs from a browser.
+//    for viewing results of uprofiler runs from a browser.
 //
 //  * Data collection component: This is implemented
-//    as a PHP extension (XHProf).
+//    as a PHP extension (uprofiler).
 //
 //
 //
@@ -33,19 +33,19 @@
 
 // by default assume that uprofiler_html & uprofiler_lib directories
 // are at the same level.
-$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
+$GLOBALS['UPROFILER_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/uprofiler.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/display/uprofiler.php';
 
 // param name, its type, and default value
-$params = array('run'        => array(XHPROF_STRING_PARAM, ''),
-                'wts'        => array(XHPROF_STRING_PARAM, ''),
-                'symbol'     => array(XHPROF_STRING_PARAM, ''),
-                'sort'       => array(XHPROF_STRING_PARAM, 'wt'), // wall time
-                'run1'       => array(XHPROF_STRING_PARAM, ''),
-                'run2'       => array(XHPROF_STRING_PARAM, ''),
-                'source'     => array(XHPROF_STRING_PARAM, 'uprofiler'),
-                'all'        => array(XHPROF_UINT_PARAM, 0),
+$params = array('run'        => array(UPROFILER_STRING_PARAM, ''),
+                'wts'        => array(UPROFILER_STRING_PARAM, ''),
+                'symbol'     => array(UPROFILER_STRING_PARAM, ''),
+                'sort'       => array(UPROFILER_STRING_PARAM, 'wt'), // wall time
+                'run1'       => array(UPROFILER_STRING_PARAM, ''),
+                'run2'       => array(UPROFILER_STRING_PARAM, ''),
+                'source'     => array(UPROFILER_STRING_PARAM, 'uprofiler'),
+                'all'        => array(UPROFILER_UINT_PARAM, 0),
                 );
 
 // pull values of these params, and create named globals for each param
@@ -67,7 +67,7 @@ foreach ($params as $k => $v) {
 
 echo "<html>";
 
-echo "<head><title>XHProf: Hierarchical Profiler Report</title>";
+echo "<head><title>uprofiler: Hierarchical Profiler Report</title>";
 uprofiler_include_js_css();
 echo "</head>";
 
@@ -80,9 +80,9 @@ $vbbar = ' class="vbbar"';
 $vrbar = ' class="vrbar"';
 $vgbar = ' class="vgbar"';
 
-$uprofiler_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new UprofilerRuns_Default();
 
-displayXHProfReport($uprofiler_runs_impl, $params, $source, $run, $wts,
+displayUprofilerReport($uprofiler_runs_impl, $params, $source, $run, $wts,
                     $symbol, $sort, $run1, $run2);
 
 

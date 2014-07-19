@@ -15,7 +15,7 @@
 //
 
 /*
- * This file contains callgraph image generation related XHProf utility
+ * This file contains callgraph image generation related uprofiler utility
  * functions
  *
  */
@@ -419,7 +419,7 @@ function  uprofiler_render_diff_image($uprofiler_runs_impl, $run1, $run2,
  * Generate image content from phprof run id.
  *
  * @param object  $uprofiler_runs_impl  An object that implements
- *                                   the iXHProfRuns interface
+ *                                   the iUprofilerRuns interface
  * @param run_id, integer, the unique id for the phprof run, this is the
  *                primary key for phprof database table.
  * @param type, string, one of the supported image types. See also
@@ -456,7 +456,7 @@ function uprofiler_get_content_by_run($uprofiler_runs_impl, $run_id, $type,
  * Generate image from phprof run id and send it to client.
  *
  * @param object  $uprofiler_runs_impl  An object that implements
- *                                   the iXHProfRuns interface
+ *                                   the iUprofilerRuns interface
  * @param run_id, integer, the unique id for the phprof run, this is the
  *                primary key for phprof database table.
  * @param type, string, one of the supported image types. See also

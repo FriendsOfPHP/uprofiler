@@ -14,7 +14,7 @@
  */
 
 /**
- * Helper javascript functions for XHProf report tooltips.
+ * Helper javascript functions for uprofiler report tooltips.
  *
  * @author Kannan Muthukkaruppan
  */

@@ -16,23 +16,23 @@
 //
 
 //
-// This file defines the interface iXHProfRuns and also provides a default
-// implementation of the interface (class XHProfRuns).
+// This file defines the interface iUprofilerRuns and also provides a default
+// implementation of the interface (class UprofilerRuns).
 //
 
 /**
- * iXHProfRuns interface for getting/saving a XHProf run.
+ * iUprofilerRuns interface for getting/saving a uprofiler run.
  *
  * Clients can either use the default implementation,
- * namely XHProfRuns_Default, of this interface or define
+ * namely UprofilerRuns_Default, of this interface or define
  * their own implementation.
  *
  * @author Kannan
  */
-interface iXHProfRuns {
+interface iUprofilerRuns {
 
   /**
-   * Returns XHProf data given a run id ($run) of a given
+   * Returns uprofiler data given a run id ($run) of a given
    * type ($type).
    *
    * Also, a brief description of the run is returned via the
@@ -41,15 +41,15 @@ interface iXHProfRuns {
   public function get_run($run_id, $type, &$run_desc);
 
   /**
-   * Save XHProf data for a profiler run of specified type
+   * Save uprofiler data for a profiler run of specified type
    * ($type).
    *
    * The caller may optionally pass in run_id (which they
    * promise to be unique). If a run_id is not passed in,
    * the implementation of this method must generated a
-   * unique run id for this saved XHProf run.
+   * unique run id for this saved uprofiler run.
    *
-   * Returns the run id for the saved XHProf run.
+   * Returns the run id for the saved uprofiler run.
    *
    */
   public function save_run($uprofiler_data, $type, $run_id = null);
@@ -57,15 +57,15 @@ interface iXHProfRuns {
 
 
 /**
- * XHProfRuns_Default is the default implementation of the
- * iXHProfRuns interface for saving/fetching XHProf runs.
+ * UprofilerRuns_Default is the default implementation of the
+ * iUprofilerRuns interface for saving/fetching uprofiler runs.
  *
  * It stores/retrieves runs to/from a filesystem directory
  * specified by the "uprofiler.output_dir" ini parameter.
  *
  * @author Kannan
  */
-class uprofilerRuns_Default implements iXHProfRuns {
+class uprofilerRuns_Default implements iUprofilerRuns {
 
   private $dir = '';
   private $suffix = 'uprofiler';
@@ -98,10 +98,10 @@ class uprofilerRuns_Default implements iXHProfRuns {
         // some default that at least works on unix...
         $dir = "/tmp";
 
-        uprofiler_error("Warning: Must specify directory location for XHProf runs. ".
+        uprofiler_error("Warning: Must specify directory location for uprofiler runs. ".
                      "Trying {$dir} as default. You can either pass the " .
                      "directory location as an argument to the constructor ".
-                     "for XHProfRuns_Default() or set uprofiler.output_dir ".
+                     "for UprofilerRuns_Default() or set uprofiler.output_dir ".
                      "ini param.");
       }
     }
@@ -118,13 +118,13 @@ class uprofilerRuns_Default implements iXHProfRuns {
     }
 
     $contents = file_get_contents($file_name);
-    $run_desc = "XHProf Run (Namespace=$type)";
+    $run_desc = "uprofiler Run (Namespace=$type)";
     return unserialize($contents);
   }
 
   public function save_run($uprofiler_data, $type, $run_id = null) {
 
-    // Use PHP serialize function to store the XHProf's
+    // Use PHP serialize function to store the uprofiler's
     // raw profiler data.
     $uprofiler_data = serialize($uprofiler_data);
 

@@ -15,7 +15,7 @@
 //
 
 //
-// This file contains various XHProf library (utility) functions.
+// This file contains various uprofiler library (utility) functions.
 // Do not add any display specific code here.
 //
 
@@ -24,7 +24,7 @@ function uprofiler_error($message) {
 }
 
 /*
- * The list of possible metrics collected as part of XHProf that
+ * The list of possible metrics collected as part of uprofiler that
  * require inclusive/exclusive handling while reporting.
  *
  * @author Kannan
@@ -172,11 +172,11 @@ function uprofiler_build_parent_child_key($parent, $child) {
 
 
 /**
- * Checks if XHProf raw data appears to be valid and not corrupted.
+ * Checks if uprofiler raw data appears to be valid and not corrupted.
  *
  *  @param   int    $run_id        Run id of run to be pruned.
  *                                 [Used only for reporting errors.]
- *  @param   array  $raw_data      XHProf raw data to be pruned
+ *  @param   array  $raw_data      uprofiler raw data to be pruned
  *                                 & validated.
  *
  *  @return  bool   true on success, false on failure
@@ -187,7 +187,7 @@ function uprofiler_valid_run($run_id, $raw_data) {
 
   $main_info = $raw_data["main()"];
   if (empty($main_info)) {
-    uprofiler_error("XHProf: main() missing in raw data for Run ID: $run_id");
+    uprofiler_error("uprofiler: main() missing in raw data for Run ID: $run_id");
     return false;
   }
 
@@ -197,7 +197,7 @@ function uprofiler_valid_run($run_id, $raw_data) {
   } else if (isset($main_info["samples"])) {
     $metric = "samples";
   } else {
-    uprofiler_error("XHProf: Wall Time information missing from Run ID: $run_id");
+    uprofiler_error("uprofiler: Wall Time information missing from Run ID: $run_id");
     return false;
   }
 
@@ -206,12 +206,12 @@ function uprofiler_valid_run($run_id, $raw_data) {
 
     // basic sanity checks...
     if ($val < 0) {
-      uprofiler_error("XHProf: $metric should not be negative: Run ID $run_id"
+      uprofiler_error("uprofiler: $metric should not be negative: Run ID $run_id"
                    . serialize($info));
       return false;
     }
     if ($val > (86400000000)) {
-      uprofiler_error("XHProf: $metric > 1 day found in Run ID: $run_id "
+      uprofiler_error("uprofiler: $metric > 1 day found in Run ID: $run_id "
                    . serialize($info));
       return false;
     }
@@ -221,7 +221,7 @@ function uprofiler_valid_run($run_id, $raw_data) {
 
 
 /**
- * Return a trimmed version of the XHProf raw data. Note that the raw
+ * Return a trimmed version of the uprofiler raw data. Note that the raw
  * data contains one entry for each unique parent/child function
  * combination.The trimmed version of raw data will only contain
  * entries where either the parent or child function is in the list
@@ -230,10 +230,10 @@ function uprofiler_valid_run($run_id, $raw_data) {
  * Note: Function main() is also always kept so that overall totals
  * can still be obtained from the trimmed version.
  *
- * @param  array  XHProf raw data
+ * @param  array  uprofiler raw data
  * @param  array  array of function names
  *
- * @return array  Trimmed XHProf Report
+ * @return array  Trimmed uprofiler Report
  *
  * @author Kannan
  */
@@ -259,7 +259,7 @@ function uprofiler_trim_run($raw_data, $functions_to_keep) {
 }
 
 /**
- * Takes raw XHProf data that was aggregated over "$num_runs" number
+ * Takes raw uprofiler data that was aggregated over "$num_runs" number
  * of runs averages/normalizes the data. Essentially the various metrics
  * collected are divided by $num_runs.
  *
@@ -274,7 +274,7 @@ function uprofiler_normalize_metrics($raw_data, $num_runs) {
   $raw_data_total = array();
 
   if (isset($raw_data["==>main()"]) && isset($raw_data["main()"])) {
-    uprofiler_error("XHProf Error: both ==>main() and main() set in raw data...");
+    uprofiler_error("uprofiler Error: both ==>main() and main() set in raw data...");
   }
 
   foreach ($raw_data as $parent_child => $info) {
@@ -304,8 +304,8 @@ function uprofiler_normalize_metrics($raw_data, $num_runs) {
  * in 2:4:1 ratio.
  *
  *  @param object  $uprofiler_runs_impl  An object that implements
- *                                    the iXHProfRuns interface
- *  @param  array  $runs            run ids of the XHProf runs..
+ *                                    the iUprofilerRuns interface
+ *  @param  array  $runs            run ids of the uprofiler runs..
  *  @param  array  $wts             integral (ideally) weights for $runs
  *  @param  string $source          source to fetch raw data for run from
  *  @param  bool   $use_script_name If true, a fake edge from main() to
@@ -441,7 +441,7 @@ function uprofiler_aggregate_runs($uprofiler_runs_impl, $runs,
  *
  * Also, store overall totals in the 2nd argument.
  *
- * @param  array $raw_data          XHProf format raw profiler data.
+ * @param  array $raw_data          uprofiler format raw profiler data.
  * @param  array &$overall_totals   OUT argument for returning
  *                                  overall totals for various
  *                                  metrics.
@@ -582,8 +582,8 @@ function uprofiler_compute_inclusive_times($raw_data) {
 
     if ($parent == $child) {
       /*
-       * XHProf PHP extension should never trigger this situation any more.
-       * Recursion is handled in the XHProf PHP extension by giving nested
+       * uprofiler PHP extension should never trigger this situation any more.
+       * Recursion is handled in the uprofiler PHP extension by giving nested
        * calls a unique recursion-depth appended name (for example, foo@1).
        */
       uprofiler_error("Error in Raw Data: parent & child are both: $parent");
@@ -618,7 +618,7 @@ function uprofiler_compute_inclusive_times($raw_data) {
 
 
 /*
- * Prunes XHProf raw data:
+ * Prunes uprofiler raw data:
  *
  * Any node whose inclusive walltime accounts for less than $prune_percent
  * of total walltime is pruned. [It is possible that a child function isn't
@@ -627,7 +627,7 @@ function uprofiler_compute_inclusive_times($raw_data) {
  * the pruned parent(s) will be attributed to a special function/symbol
  * "__pruned__()".]
  *
- *  @param   array  $raw_data      XHProf raw data to be pruned & validated.
+ *  @param   array  $raw_data      uprofiler raw data to be pruned & validated.
  *  @param   double $prune_percent Any edges that account for less than
  *                                 $prune_percent of time will be pruned
  *                                 from the raw data.
@@ -640,7 +640,7 @@ function uprofiler_prune_run($raw_data, $prune_percent) {
 
   $main_info = $raw_data["main()"];
   if (empty($main_info)) {
-    uprofiler_error("XHProf: main() missing in raw data");
+    uprofiler_error("uprofiler: main() missing in raw data");
     return false;
   }
 
@@ -650,7 +650,7 @@ function uprofiler_prune_run($raw_data, $prune_percent) {
   } else if (isset($main_info["samples"])) {
     $prune_metric = "samples";
   } else {
-    uprofiler_error("XHProf: for main() we must have either wt "
+    uprofiler_error("uprofiler: for main() we must have either wt "
                  ."or samples attribute set");
     return false;
   }
@@ -724,10 +724,10 @@ function uprofiler_array_unset($arr, $k) {
 /**
  * Type definitions for URL params
  */
-define('XHPROF_STRING_PARAM', 1);
-define('XHPROF_UINT_PARAM',   2);
-define('XHPROF_FLOAT_PARAM',  3);
-define('XHPROF_BOOL_PARAM',   4);
+define('UPROFILER_STRING_PARAM', 1);
+define('UPROFILER_UINT_PARAM',   2);
+define('UPROFILER_FLOAT_PARAM',  3);
+define('UPROFILER_BOOL_PARAM',   4);
 
 
 /**
@@ -887,16 +887,16 @@ function uprofiler_param_init($params) {
   /* Create variables specified in $params keys, init defaults */
   foreach ($params as $k => $v) {
     switch ($v[0]) {
-    case XHPROF_STRING_PARAM:
+    case UPROFILER_STRING_PARAM:
       $p = uprofiler_get_string_param($k, $v[1]);
       break;
-    case XHPROF_UINT_PARAM:
+    case UPROFILER_UINT_PARAM:
       $p = uprofiler_get_uint_param($k, $v[1]);
       break;
-    case XHPROF_FLOAT_PARAM:
+    case UPROFILER_FLOAT_PARAM:
       $p = uprofiler_get_float_param($k, $v[1]);
       break;
-    case XHPROF_BOOL_PARAM:
+    case UPROFILER_BOOL_PARAM:
       $p = uprofiler_get_bool_param($k, $v[1]);
       break;
     default:
@@ -917,7 +917,7 @@ function uprofiler_param_init($params) {
 
 /**
  * Given a partial query string $q return matching function names in
- * specified XHProf run. This is used for the type ahead function
+ * specified uprofiler run. This is used for the type ahead function
  * selector.
  *
  * @author Kannan

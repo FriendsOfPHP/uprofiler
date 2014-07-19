@@ -15,27 +15,27 @@
 //
 
 //
-// XHProf: A Hierarchical Profiler for PHP
+// uprofiler: A Hierarchical Profiler for PHP
 //
-// XHProf has two components:
+// uprofiler has two components:
 //
 //  * This module is the UI/reporting component, used
-//    for viewing results of XHProf runs from a browser.
+//    for viewing results of uprofiler runs from a browser.
 //
 //  * Data collection component: This is implemented
-//    as a PHP extension (XHProf).
+//    as a PHP extension (uprofiler).
 //
 // @author Kannan Muthukkaruppan
 //
 
-if (!isset($GLOBALS['XHPROF_LIB_ROOT'])) {
-  // by default, the parent directory is XHPROF lib root
-  $GLOBALS['XHPROF_LIB_ROOT'] = realpath(dirname(__FILE__) . '/..');
+if (!isset($GLOBALS['UPROFILER_LIB_ROOT'])) {
+  // by default, the parent directory is uprofiler lib root
+  $GLOBALS['UPROFILER_LIB_ROOT'] = realpath(dirname(__FILE__) . '/..');
 }
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_lib.php';
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/callgraph_utils.php';
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_runs.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/utils/uprofiler_lib.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/utils/callgraph_utils.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/utils/uprofiler_runs.php';
 
 
 /**
@@ -81,7 +81,7 @@ function uprofiler_include_js_css($ui_dir_url_path = null) {
 
 
 /*
- * Formats call counts for XHProf reports.
+ * Formats call counts for uprofiler reports.
  *
  * Description:
  * Call counts in single-run reports are integer values.
@@ -545,7 +545,7 @@ function profiler_report ($url_params,
   // data tables
   if (!empty($rep_symbol)) {
     if (!isset($symbol_tab[$rep_symbol])) {
-      echo "<hr>Symbol <b>$rep_symbol</b> not found in XHProf run</b><hr>";
+      echo "<hr>Symbol <b>$rep_symbol</b> not found in uprofiler run</b><hr>";
       return;
     }
 
@@ -1003,10 +1003,10 @@ function print_pc_array($url_params, $results, $base_ct, $base_info, $parent,
 
 function print_source_link($info) {
   if (strncmp($info['fn'], 'run_init', 8) && $info['fn'] !== 'main()') {
-	if (defined('XHPROF_SYMBOL_LOOKUP_URL')) {
+	if (defined('UPROFILER_SYMBOL_LOOKUP_URL')) {
       $link = uprofiler_render_link(
         'source',
-        XHPROF_SYMBOL_LOOKUP_URL . '?symbol='.rawurlencode($info["fn"]));
+        UPROFILER_SYMBOL_LOOKUP_URL . '?symbol='.rawurlencode($info["fn"]));
       print(' ('.$link.')');
     }
   }
@@ -1346,12 +1346,12 @@ function profiler_diff_report($url_params,
 
 
 /**
- * Generate a XHProf Display View given the various URL parameters
+ * Generate a uprofiler Display View given the various URL parameters
  * as arguments. The first argument is an object that implements
- * the iXHProfRuns interface.
+ * the iUprofilerRuns interface.
  *
  * @param object  $uprofiler_runs_impl  An object that implements
- *                                   the iXHProfRuns interface
+ *                                   the iUprofilerRuns interface
  *.
  * @param array   $url_params   Array of non-default URL params.
  *
@@ -1379,7 +1379,7 @@ function profiler_diff_report($url_params,
  * @param string  $run2         New run id (for diff reports)
  *
  */
-function displayXHProfReport($uprofiler_runs_impl, $url_params, $source,
+function displayUprofilerReport($uprofiler_runs_impl, $url_params, $source,
                              $run, $wts, $symbol, $sort, $run1, $run2) {
 
   if ($run) {                              // specific run to display?
@@ -1431,7 +1431,7 @@ function displayXHProfReport($uprofiler_runs_impl, $url_params, $source,
                          $run2);
 
   } else {
-    echo "No XHProf runs specified in the URL.";
+    echo "No uprofiler runs specified in the URL.";
     if (method_exists($uprofiler_runs_impl, 'list_runs')) {
       $uprofiler_runs_impl->list_runs();
     }

@@ -16,10 +16,10 @@
 
 /**
  *
- * A callgraph generator for XHProf.
+ * A callgraph generator for uprofiler.
  *
  * * This file is part of the UI/reporting component,
- *   used for viewing results of XHProf runs from a
+ *   used for viewing results of uprofiler runs from a
  *   browser.
  *
  * Modification History:
@@ -31,38 +31,38 @@
 
 // by default assume that uprofiler_html & uprofiler_lib directories
 // are at the same level.
-$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
+$GLOBALS['UPROFILER_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/uprofiler.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/display/uprofiler.php';
 
 ini_set('max_execution_time', 100);
 
 $params = array(// run id param
-                'run' => array(XHPROF_STRING_PARAM, ''),
+                'run' => array(UPROFILER_STRING_PARAM, ''),
 
                 // source/namespace/type of run
-                'source' => array(XHPROF_STRING_PARAM, 'uprofiler'),
+                'source' => array(UPROFILER_STRING_PARAM, 'uprofiler'),
 
                 // the focus function, if it is set, only directly
                 // parents/children functions of it will be shown.
-                'func' => array(XHPROF_STRING_PARAM, ''),
+                'func' => array(UPROFILER_STRING_PARAM, ''),
 
                 // image type, can be 'jpg', 'gif', 'ps', 'png'
-                'type' => array(XHPROF_STRING_PARAM, 'png'),
+                'type' => array(UPROFILER_STRING_PARAM, 'png'),
 
                 // only functions whose exclusive time over the total time
                 // is larger than this threshold will be shown.
                 // default is 0.01.
-                'threshold' => array(XHPROF_FLOAT_PARAM, 0.01),
+                'threshold' => array(UPROFILER_FLOAT_PARAM, 0.01),
 
                 // whether to show critical_path
-                'critical' => array(XHPROF_BOOL_PARAM, true),
+                'critical' => array(UPROFILER_BOOL_PARAM, true),
 
                 // first run in diff mode.
-                'run1' => array(XHPROF_STRING_PARAM, ''),
+                'run1' => array(UPROFILER_STRING_PARAM, ''),
 
                 // second run in diff mode.
-                'run2' => array(XHPROF_STRING_PARAM, '')
+                'run2' => array(UPROFILER_STRING_PARAM, '')
                 );
 
 // pull values of these params, and create named globals for each param
@@ -78,7 +78,7 @@ if (!array_key_exists($type, $uprofiler_legal_image_types)) {
   $type = $params['type'][1]; // default image type.
 }
 
-$uprofiler_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new UprofilerRuns_Default();
 
 if (!empty($run)) {
   // single run call graph image generation

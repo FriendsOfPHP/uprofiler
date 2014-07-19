@@ -15,24 +15,24 @@
 //
 
 /**
- * AJAX endpoint for XHProf function name typeahead is implemented
+ * AJAX endpoint for uprofiler function name typeahead is implemented
  * as a thin wrapper around this file. The wrapper must set up
  * the global $uprofiler_runs_impl to correspond to an object that
- * implements the iXHProfRuns interface.
+ * implements the UprofilerRuns interface.
  *
  * @author(s)  Kannan Muthukkaruppan
  *             Changhao Jiang
  */
 
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/utils/uprofiler_lib.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/utils/uprofiler_lib.php';
 
 // param name, its type, and default value
-$params = array('q'          => array(XHPROF_STRING_PARAM, ''),
-                'run'        => array(XHPROF_STRING_PARAM, ''),
-                'run1'       => array(XHPROF_STRING_PARAM, ''),
-                'run2'       => array(XHPROF_STRING_PARAM, ''),
-                'source'     => array(XHPROF_STRING_PARAM, 'uprofiler'),
+$params = array('q'          => array(UPROFILER_STRING_PARAM, ''),
+                'run'        => array(UPROFILER_STRING_PARAM, ''),
+                'run1'       => array(UPROFILER_STRING_PARAM, ''),
+                'run2'       => array(UPROFILER_STRING_PARAM, ''),
+                'source'     => array(UPROFILER_STRING_PARAM, 'uprofiler'),
                 );
 
 // pull values of these params, and create named globals for each param

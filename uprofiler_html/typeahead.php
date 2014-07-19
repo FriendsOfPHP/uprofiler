@@ -15,7 +15,7 @@
 //
 
 /**
- * AJAX endpoint for XHProf function name typeahead.
+ * AJAX endpoint for uprofiler function name typeahead.
  *
  * @author(s)  Kannan Muthukkaruppan
  *             Changhao Jiang
@@ -23,10 +23,10 @@
 
 // by default assume that uprofiler_html & uprofiler_lib directories
 // are at the same level.
-$GLOBALS['XHPROF_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
+$GLOBALS['UPROFILER_LIB_ROOT'] = dirname(__FILE__) . '/../uprofiler_lib';
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/uprofiler.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/display/uprofiler.php';
 
-$uprofiler_runs_impl = new XHProfRuns_Default();
+$uprofiler_runs_impl = new UprofilerRuns_Default();
 
-require_once $GLOBALS['XHPROF_LIB_ROOT'].'/display/typeahead_common.php';
+require_once $GLOBALS['UPROFILER_LIB_ROOT'].'/display/typeahead_common.php';
