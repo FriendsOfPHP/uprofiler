@@ -167,8 +167,7 @@ echo "\n";
 
 // 5c: Sanity test to only ignore my_call_user_func_array_safe
 echo "Part 5c: Only ignore call_user_func_array\n";
-$uprofiler_ignored_functions = array('ignored_functions' => 
-                                  'my_call_user_func_array_safe');
+$uprofiler_ignored_functions = array('ignored_functions' => array('my_call_user_func_array_safe'));
 uprofiler_enable(UPROFILER_FLAGS_MEMORY, $uprofiler_ignored_functions);
 test_my_call_user_func_array_safe('foo_array');
 $output = uprofiler_disable();
@@ -198,8 +197,8 @@ foo==>bar                               : ct=       2; wt=*;
 foo==>strlen                            : ct=       1; wt=*;
 main()                                  : ct=       1; wt=*;
 main()==>test_call_user_func::test_call_user_func: ct=       1; wt=*;
-main()==>uprofiler_disable              : ct=       1; wt=*;
 test_call_user_func::test_call_user_func==>foo: ct=       1; wt=*;
+uprofiler_disable                       : ct=       1; wt=*;
 
 Part 2b: Standard profile without parameters
 hello: user_func test
@@ -230,8 +229,8 @@ foo_array==>bar                         : cpu=*; ct=       2; wt=*;
 foo_array==>strlen                      : cpu=*; ct=       1; wt=*;
 main()                                  : cpu=*; ct=       1; wt=*;
 main()==>test_call_user_func_array      : cpu=*; ct=       1; wt=*;
-main()==>uprofiler_disable              : cpu=*; ct=       1; wt=*;
 test_call_user_func_array==>foo_array   : cpu=*; ct=       1; wt=*;
+uprofiler_disable                       : cpu=*; ct=       1; wt=*;
 
 Part 4: Ignore my_call_user_func_safe
 hello: Array
@@ -240,9 +239,9 @@ foo==>bar                               : ct=       2; wt=*;
 foo==>strlen                            : ct=       1; wt=*;
 main()                                  : ct=       1; wt=*;
 main()==>test_my_call_user_func_safe    : ct=       1; wt=*;
-main()==>uprofiler_disable              : ct=       1; wt=*;
 test_my_call_user_func_safe==>foo       : ct=       1; wt=*;
 test_my_call_user_func_safe==>is_callable: ct=       1; wt=*;
+uprofiler_disable                       : ct=       1; wt=*;
 
 Part 5a: Ignore my_call_user_func_array_safe and strlen
 hello: my_user_func_array_safetest
@@ -250,9 +249,9 @@ Part 5a output:
 foo_array==>bar                         : ct=       2; mu=*; pmu=*; wt=*;
 main()                                  : ct=       1; mu=*; pmu=*; wt=*;
 main()==>test_my_call_user_func_array_safe: ct=       1; mu=*; pmu=*; wt=*;
-main()==>uprofiler_disable              : ct=       1; mu=*; pmu=*; wt=*;
 test_my_call_user_func_array_safe==>foo_array: ct=       1; mu=*; pmu=*; wt=*;
 test_my_call_user_func_array_safe==>is_callable: ct=       1; mu=*; pmu=*; wt=*;
+uprofiler_disable                       : ct=       1; mu=*; pmu=*; wt=*;
 
 Part 5b: Profile call_user_func_array and my_call_user_func_array_safe
 hello: my_user_func_array_safetest
@@ -275,6 +274,6 @@ foo_array==>bar                         : ct=       2; mu=*; pmu=*; wt=*;
 foo_array==>strlen                      : ct=       1; mu=*; pmu=*; wt=*;
 main()                                  : ct=       1; mu=*; pmu=*; wt=*;
 main()==>test_my_call_user_func_array_safe: ct=       1; mu=*; pmu=*; wt=*;
-main()==>uprofiler_disable              : ct=       1; mu=*; pmu=*; wt=*;
 test_my_call_user_func_array_safe==>call_user_func_array: ct=       1; mu=*; pmu=*; wt=*;
 test_my_call_user_func_array_safe==>is_callable: ct=       1; mu=*; pmu=*; wt=*;
+uprofiler_disable                       : ct=       1; mu=*; pmu=*; wt=*;

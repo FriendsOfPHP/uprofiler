@@ -1546,11 +1546,11 @@ static int hp_begin(char level, long uprofiler_flags, zval *options TSRMLS_DC)
 		break;
 	}
 
+	hp_get_ignored_functions_from_arg(options);
+
 	if (UNEXPECTED(hp_init_profiler_state(level TSRMLS_CC) == FAILURE)) {
 		return FAILURE;
 	}
-
-	hp_get_ignored_functions_from_arg(options);
 
     hp_globals.enabled         = 1;
     hp_globals.uprofiler_flags = uprofiler_flags;
