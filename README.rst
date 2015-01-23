@@ -313,7 +313,7 @@ You should get an output like:
     By default only call counts & elapsed time is profiled. You can optionally
     also profile CPU time and/or memory usage. Replace, ``uprofiler_enable();``
     in the above program with, for example
-    ``uprofiler_enable(uprofiler_FLAGS_CPU + uprofiler_FLAGS_MEMORY)``
+    ``uprofiler_enable(UPROFILER_FLAGS_CPU + UPROFILER_FLAGS_MEMORY)``
 
 You should now get an output like:
 
@@ -383,8 +383,8 @@ Skipping builtin functions during profiling
 By default PHP builtin functions (such as ``strlen``) are profiled. If you do
 not want to profile builtin functions (to either reduce the overhead of
 profiling further or size of generated raw data), you can use the
-``uprofiler_FLAGS_NO_BUILTINS`` flag as in for example
-``uprofiler_enable(uprofiler_FLAGS_NO_BUILTINS)``.
+``UPROFILER_FLAGS_NO_BUILTINS`` flag as in for example
+``uprofiler_enable(UPROFILER_FLAGS_NO_BUILTINS)``.
 
 Ignoring specific functions during profiling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -411,7 +411,7 @@ or,
 .. code-block:: php
 
     // elapsed time + memory profiling; ignore call_user_func* during profiling
-    uprofiler_enable(uprofiler_FLAGS_MEMORY,
+    uprofiler_enable(UPROFILER_FLAGS_MEMORY,
                   array('ignored_functions' =>  array('call_user_func',
                                                       'call_user_func_array')));
 
@@ -573,7 +573,7 @@ Some observations/guidelines. Your mileage may vary:
 
 * CPU timer (getrusage) on Linux has high overheads. It is also coarse grained
   (millisec accuracy rather than microsec level) to be useful at function
-  level. Therefore, the skew in reported numbers when using uprofiler_FLAGS_CPU
+  level. Therefore, the skew in reported numbers when using UPROFILER_FLAGS_CPU
   mode tends to be higher.
 
   We recommend using elapsed time + memory profiling mode in production. [Note:
@@ -582,7 +582,7 @@ Some observations/guidelines. Your mileage may vary:
   .. code-block:: php
 
       // elapsed time profiling (default) + memory profiling
-      uprofiler_enable(uprofiler_FLAGS_MEMORY);
+      uprofiler_enable(UPROFILER_FLAGS_MEMORY);
 
 * Profiling a random sample of pages/requests works well in capturing data that
   is representative of your production workload.
@@ -593,7 +593,7 @@ Some observations/guidelines. Your mileage may vary:
   .. code-block:: php
 
      if (mt_rand(1, 10000) == 1) {
-       uprofiler_enable(uprofiler_FLAGS_MEMORY);
+       uprofiler_enable(UPROFILER_FLAGS_MEMORY);
        $uprofiler_on = true;
      }
 
