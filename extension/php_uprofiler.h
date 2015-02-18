@@ -81,9 +81,10 @@ extern zend_module_entry uprofiler_module_entry;
  * Patch for compiling in Win32/64
  * @author Benjamin Carl <opensource@clickalicious.de>
  */
+#    define cpu_set_t PDWORD_PTR
 #    define CPU_SET(cpu_id, new_mask) (*(new_mask)) = (cpu_id + 1)
 #    define CPU_ZERO(new_mask) (*(new_mask)) = 0
-#    define SET_AFFINITY(pid, size, mask) SetProcessAffinityMask(GetCurrentProcess(), (DWORD_PTR)mask)
+#    define SET_AFFINITY(pid, size, mask) SetProcessAffinityMask(GetCurrentProcess(), mask)
 #    define GET_AFFINITY(pid, size, mask) \
                       GetProcessAffinityMask(GetCurrentProcess(), mask, &s_mask)
 #else
