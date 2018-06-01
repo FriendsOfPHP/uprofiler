@@ -1,3 +1,6 @@
+**WARNING**: This project is not maintained anymore and does not work on PHP 7+.
+If you are looking for a PHP profiler, you can have a look at https://blackfire.io/ (the free version has more features and a better UI than the ones provided by this project).
+
 uprofiler
 =========
 
